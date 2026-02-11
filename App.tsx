@@ -149,7 +149,7 @@ const App: React.FC = () => {
             <ServiceSection key={SECTIONS[0].id} section={SECTIONS[0]} index={0} />
 
             {/* Services Section */}
-            <ServicesSection />
+            <ServicesSection isActive={currentSection === 3} />
 
             {/* Capabilities Section - Visual Storytelling */}
             <ServiceSection key={SECTIONS[1].id} section={SECTIONS[1]} index={1} />

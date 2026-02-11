@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence, useInView } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Camera, Film, MonitorPlay, Zap, ArrowUpRight } from 'lucide-react';
 
 
@@ -40,15 +40,17 @@ const services = [
     }
 ];
 
-const ServicesSection: React.FC = () => {
+interface ServicesSectionProps {
+    isActive?: boolean;
+}
+
+const ServicesSection: React.FC<ServicesSectionProps> = ({ isActive = false }) => {
     const [activeIndex, setActiveIndex] = useState(0);
     const [progress, setProgress] = useState(0);
     const [isPaused, setIsPaused] = useState(false);
     const [videoReady, setVideoReady] = useState(false);
 
-    // Visibility detection
     const sectionRef = useRef(null);
-    const isInView = useInView(sectionRef, { amount: 0.3 });
 
     // Refs for clean timer logic
     const activeIndexRef = useRef(0);
@@ -57,7 +59,7 @@ const ServicesSection: React.FC = () => {
 
     // Video-duration-based timer — syncs with actual video playback using RAF for smooth updates
     useEffect(() => {
-        if (isPaused || !isInView || !videoReady) return;
+        if (isPaused || !isActive || !videoReady) return;
 
         const video = document.getElementById(`service-video-${activeIndex}`) as HTMLVideoElement;
         if (!video) return;
@@ -93,7 +95,7 @@ const ServicesSection: React.FC = () => {
             cancelAnimationFrame(animationFrameId);
             video.removeEventListener('ended', handleVideoEnd);
         };
-    }, [isPaused, isInView, videoReady, activeIndex]);
+    }, [isPaused, isActive, videoReady, activeIndex]);
 
     // Restart video and wait for it to be ready before starting timer
     useEffect(() => {
@@ -111,18 +113,21 @@ const ServicesSection: React.FC = () => {
         }
 
         try {
-            // Reset and play both videos
+            // Reset both videos
             video.currentTime = 0;
             if (bgVideo) bgVideo.currentTime = 0;
 
-            const playPromise = video.play();
-            if (bgVideo) bgVideo.play().catch(() => { });
+            // Only play when section is active
+            if (isActive) {
+                const playPromise = video.play();
+                if (bgVideo) bgVideo.play().catch(() => { });
 
-            if (playPromise !== undefined) {
-                playPromise.catch(() => { });
+                if (playPromise !== undefined) {
+                    playPromise.catch(() => { });
+                }
             }
 
-            // Wait for video to start playing and have duration metadata
+            // Wait for video to be ready
             const onCanPlay = () => {
                 if (!cancelled) setVideoReady(true);
                 video.removeEventListener('canplay', onCanPlay);
@@ -141,7 +146,7 @@ const ServicesSection: React.FC = () => {
             cancelled = true;
             clearTimeout(timeout);
         };
-    }, [activeIndex]);
+    }, [activeIndex, isActive]);
 
     // Pause/Resume video based on isPaused state
     useEffect(() => {
@@ -150,14 +155,14 @@ const ServicesSection: React.FC = () => {
 
         if (!video) return;
 
-        if (isPaused) {
+        if (!isActive || isPaused) {
             video.pause();
             if (bgVideo) bgVideo.pause();
-        } else if (isInView && videoReady) {
+        } else if (videoReady) {
             video.play().catch(() => { });
             if (bgVideo) bgVideo.play().catch(() => { });
         }
-    }, [isPaused, activeIndex, isInView, videoReady]);
+    }, [isPaused, activeIndex, isActive, videoReady]);
 
     // Manual change handler
     const handleManualChange = (index: number) => {
@@ -216,7 +221,6 @@ const ServicesSection: React.FC = () => {
                                             id={`service-video-bg-${index}`}
                                             src={service.videoSrc}
                                             className="w-full h-full object-cover"
-                                            autoPlay
                                             muted
                                             playsInline
                                             loop={false}
@@ -229,7 +233,6 @@ const ServicesSection: React.FC = () => {
                                         id={`service-video-${index}`}
                                         src={service.videoSrc}
                                         className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-700 ${isActive ? 'opacity-70' : 'opacity-30'}`}
-                                        autoPlay
                                         muted
                                         playsInline
                                         loop={false}

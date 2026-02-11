@@ -289,7 +289,7 @@ const VideoShowcase: React.FC<VideoShowcaseProps> = ({ isActive = false }) => {
   const playerContainerRef = useRef<HTMLDivElement>(null);
   const isPlayingRef = useRef(state.isPlaying);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
 
   // Keep ref in sync with state to avoid stale closures in Vimeo callbacks
   useEffect(() => {
@@ -317,13 +317,8 @@ const VideoShowcase: React.FC<VideoShowcaseProps> = ({ isActive = false }) => {
     const video = videoElementRef.current;
     if (!video) return;
     if (state.isPlaying) {
-      // Try unmuted first; if browser blocks it, retry muted
       video.play().catch(() => {
-        video.muted = true;
-        setIsMuted(true);
-        video.play().catch(() => {
-          dispatch({ type: 'SET_PLAYING', value: false });
-        });
+        dispatch({ type: 'SET_PLAYING', value: false });
       });
     } else {
       video.pause();
@@ -719,6 +714,7 @@ const VideoShowcase: React.FC<VideoShowcaseProps> = ({ isActive = false }) => {
                             transform: `scale(${state.zoom / 50})`,
                             ...(activeFilterCSS ? { filter: activeFilterCSS, opacity: state.filterStrength / 100 } : {})
                           }}
+                          muted
                           playsInline
                           onTimeUpdate={(e) => {
                             const video = e.currentTarget;
