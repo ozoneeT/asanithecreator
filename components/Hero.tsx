@@ -59,19 +59,36 @@ const Hero: React.FC<HeroProps> = ({ onNavigate }) => {
           <span className="font-semibold">The Creator</span>
         </motion.h1>
 
-        {/* Mobile-only compact testimonial */}
+        {/* Mobile-only cycling testimonial */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 1.0 }}
-          className="md:hidden mt-3 flex items-center gap-2"
+          className="md:hidden mt-4 max-w-[280px] text-center"
         >
-          <div className="flex gap-0.5">
+          <div className="flex gap-0.5 justify-center mb-2">
             {[1, 2, 3, 4, 5].map(i => (
               <Star key={i} className="w-3 h-3 text-[#F59E0B] fill-[#F59E0B]" />
             ))}
           </div>
-          <span className="text-xs text-white/40">5 Years Experience</span>
+          <div className="relative min-h-[60px]">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentTestimonial}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.3 }}
+              >
+                <p className="text-xs text-white/50 leading-relaxed">
+                  "{testimonials[currentTestimonial].message}"
+                </p>
+                <p className="text-[11px] text-white/30 mt-1.5 font-bold uppercase tracking-wider">
+                  {testimonials[currentTestimonial].name}
+                </p>
+              </motion.div>
+            </AnimatePresence>
+          </div>
         </motion.div>
       </div>
 

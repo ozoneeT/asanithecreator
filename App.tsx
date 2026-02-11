@@ -138,7 +138,7 @@ const App: React.FC = () => {
           {/* Scroll Container */}
           <div
             style={{
-              transform: `translateY(-${currentSection * 100}vh)`,
+              transform: `translateY(calc(-${currentSection} * var(--section-height)))`,
               transition: 'transform 1s cubic-bezier(0.76, 0, 0.24, 1)',
             }}
           >

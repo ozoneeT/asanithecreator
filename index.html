@@ -153,8 +153,17 @@
       transform-origin: 70% 70%;
     }
 
+    /* Section height custom property for scroll transform alignment */
+    :root {
+      --section-height: 100vh;
+    }
+
     /* Fix h-screen on mobile browsers (address bar changes viewport) */
     @supports (height: 100dvh) {
+      :root {
+        --section-height: 100dvh;
+      }
+
       .h-screen {
         height: 100dvh !important;
       }
