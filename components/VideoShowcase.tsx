@@ -530,12 +530,12 @@ const VideoShowcase: React.FC<VideoShowcaseProps> = ({ isActive = false }) => {
       </div>
 
       {/* ─── Top Toolbar ─── */}
-      <div className="flex-shrink-0 flex items-center h-[44px] bg-[#16162a] border-b border-[#2a2a4a] px-2">
+      <div className="flex-shrink-0 flex items-center h-[44px] bg-[#16162a] border-b border-[#2a2a4a] px-1 md:px-2 overflow-x-auto no-scrollbar">
         {TOP_TABS.map(({ id, label, Icon }) => (
           <button
             key={id}
             onClick={() => dispatch({ type: 'SET_TOP_TAB', tab: id })}
-            className={`flex flex-col items-center justify-center px-4 h-full gap-0.5 transition-colors relative ${state.activeTopTab === id ? 'text-white' : 'text-[#8888aa] hover:text-[#bbbbd0]'
+            className={`flex flex-col items-center justify-center px-2 md:px-4 h-full gap-0.5 transition-colors relative flex-shrink-0 ${state.activeTopTab === id ? 'text-white' : 'text-[#8888aa] hover:text-[#bbbbd0]'
               }`}
           >
             <Icon size={16} />
@@ -802,7 +802,7 @@ const VideoShowcase: React.FC<VideoShowcaseProps> = ({ isActive = false }) => {
               </button>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="hidden sm:flex items-center gap-2">
               <Volume2 size={13} className="text-[#555570]" />
               <input
                 type="range"
@@ -949,7 +949,7 @@ const VideoShowcase: React.FC<VideoShowcaseProps> = ({ isActive = false }) => {
       </div>
 
       {/* ─── Bottom: Timeline ─── */}
-      <div className="flex-shrink-0 h-[180px] bg-[#16162a] border-t border-[#2a2a4a] flex flex-col">
+      <div className="flex-shrink-0 h-[120px] md:h-[180px] bg-[#16162a] border-t border-[#2a2a4a] flex flex-col">
 
         {/* Timeline Toolbar */}
         <div className="flex items-center justify-between px-3 h-[32px] border-b border-[#2a2a4a] flex-shrink-0">

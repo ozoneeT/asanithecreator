@@ -77,7 +77,7 @@ const App: React.FC = () => {
     const handleTouchEnd = (e: TouchEvent) => {
       if (isScrollingRef.current) return;
       const diff = touchStartRef.current - e.changedTouches[0].clientY;
-      if (Math.abs(diff) > 40) {
+      if (Math.abs(diff) > 60) {
         if (diff > 0) scrollToSection(currentSection + 1);
         else scrollToSection(currentSection - 1);
       }
@@ -112,8 +112,10 @@ const App: React.FC = () => {
     home: 0,
     work: 1,
     about: 2,
-    expertise: 3,
-    contact: 5,
+    services: 3,
+    capabilities: 4,
+    testimonials: 5,
+    contact: 6,
   };
 
   const handleNavClick = (section: string) => {
@@ -159,19 +161,21 @@ const App: React.FC = () => {
           </div>
 
           {/* Section Indicator Dots */}
-          <div className={`fixed right-6 md:right-10 top-1/2 -translate-y-1/2 z-40 hidden md:flex flex-col items-end gap-4 transition-opacity duration-500 ${currentSection === 1 ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+          <div className={`fixed z-40 flex transition-opacity duration-500 ${currentSection === 1 ? 'opacity-0 pointer-events-none' : 'opacity-100'}
+            bottom-4 left-1/2 -translate-x-1/2 flex-row gap-2
+            md:bottom-auto md:left-auto md:translate-x-0 md:right-10 md:top-1/2 md:-translate-y-1/2 md:flex-col md:items-end md:gap-4`}>
             {SECTION_NAMES.map((name, i) => (
               <button
                 key={i}
                 onClick={() => scrollToSection(i)}
-                className="group relative flex items-center gap-3"
+                className="group relative flex items-center gap-3 min-w-[20px] min-h-[20px] md:min-w-0 md:min-h-0 justify-center md:justify-end"
               >
-                <span className={`text-[9px] uppercase tracking-[0.15em] whitespace-nowrap transition-all duration-500 font-light ${currentSection === i ? 'opacity-50 translate-x-0' : 'opacity-0 translate-x-2 group-hover:opacity-30 group-hover:translate-x-0'
+                <span className={`text-[9px] uppercase tracking-[0.15em] whitespace-nowrap transition-all duration-500 font-light hidden md:block ${currentSection === i ? 'opacity-50 translate-x-0' : 'opacity-0 translate-x-2 group-hover:opacity-30 group-hover:translate-x-0'
                   }`}>
                   {name}
                 </span>
                 <span className={`block rounded-full transition-all duration-500 ${currentSection === i
-                  ? 'w-2.5 h-2.5 bg-white'
+                  ? 'w-2 h-2 md:w-2.5 md:h-2.5 bg-white'
                   : 'w-1.5 h-1.5 bg-white/20 group-hover:bg-white/40'
                   }`} />
               </button>

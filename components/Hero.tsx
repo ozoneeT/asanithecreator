@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowUpRight, ArrowDown, Star, Quote } from 'lucide-react';
-import { TESTIMONIALS } from '../constants';
+import { TESTIMONIALS, USER_IMAGE } from '../constants';
 
 interface HeroProps {
   onNavigate?: (sectionIndex: number) => void;
@@ -20,7 +20,7 @@ const Hero: React.FC<HeroProps> = ({ onNavigate }) => {
   }, []);
 
   return (
-    <section className="h-screen w-full relative flex flex-col items-center justify-end bg-[#0a0a0a] overflow-hidden pt-32 md:pt-40 pb-0">
+    <section className="h-screen w-full relative flex flex-col items-center justify-end bg-[#0a0a0a] overflow-hidden pt-20 sm:pt-32 md:pt-40 pb-0">
 
       {/* Background Elements */}
       <div className="absolute inset-0 bg-gradient-radial from-white/[0.02] via-transparent to-transparent pointer-events-none" />
@@ -33,7 +33,7 @@ const Hero: React.FC<HeroProps> = ({ onNavigate }) => {
       </div>
 
       {/* --- TOP SECTION: Header & Title --- */}
-      <div className="relative top-10 z-20 flex flex-col items-center text-center mb-4 md:mb-8 w-full px-6 mt-32 md:mt-40">
+      <div className="relative top-10 z-20 flex flex-col items-center text-center mb-4 md:mb-8 w-full px-4 sm:px-6 mt-16 sm:mt-28 md:mt-48">
         {/* Hello Bubble */}
         <motion.div
           initial={{ opacity: 0, y: -10 }}
@@ -55,9 +55,24 @@ const Hero: React.FC<HeroProps> = ({ onNavigate }) => {
           transition={{ duration: 0.6, delay: 0.7 }}
           className="text-5xl md:text-7xl lg:text-8xl font-light tracking-tight text-white/90 leading-[1.1]"
         >
-          I'm <span className="font-serif italic text-white">Asani</span>, <br className="hidden md:block" />
+          I'm <span className="font-serif italic text-white">Asani</span>, <br />
           <span className="font-semibold">The Creator</span>
         </motion.h1>
+
+        {/* Mobile-only compact testimonial */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5, delay: 1.0 }}
+          className="md:hidden mt-3 flex items-center gap-2"
+        >
+          <div className="flex gap-0.5">
+            {[1, 2, 3, 4, 5].map(i => (
+              <Star key={i} className="w-3 h-3 text-[#F59E0B] fill-[#F59E0B]" />
+            ))}
+          </div>
+          <span className="text-xs text-white/40">5 Years Experience</span>
+        </motion.div>
       </div>
 
       {/* LEFT WIDGET: Cycling Testimonials */}
@@ -118,7 +133,7 @@ const Hero: React.FC<HeroProps> = ({ onNavigate }) => {
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1], delay: 0.3 }}
-            className="relative z-10 w-full max-w-[320px] sm:max-w-[400px] md:max-w-[500px] lg:max-w-[600px] flex justify-center items-end"
+            className="relative z-10 w-full max-w-[85vw] sm:max-w-[400px] md:max-w-[500px] lg:max-w-[600px] flex justify-center items-end"
           >
             {/* ARCH Background Shape */}
             <div className="absolute bottom-0 w-full h-[75%] bg-gradient-to-b from-white/5 to-transparent border-t border-x border-white/10 rounded-t-[50%] backdrop-blur-sm z-0">
@@ -128,7 +143,7 @@ const Hero: React.FC<HeroProps> = ({ onNavigate }) => {
 
             {/* Character Image */}
             <img
-              src="/IMG_5039.png"
+              src={USER_IMAGE}
               alt="Asani The Creator"
               className="relative z-10 w-full h-auto object-contain drop-shadow-2xl"
               style={{ maskImage: 'linear-gradient(to bottom, black 90%, transparent 100%)' }}
@@ -139,7 +154,7 @@ const Hero: React.FC<HeroProps> = ({ onNavigate }) => {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 1.1 }}
-              className="absolute bottom-8 md:bottom-12 z-40 flex items-center gap-4 bg-white/5 backdrop-blur-md border border-white/10 p-2 rounded-full pl-6 pr-2 shadow-2xl"
+              className="absolute bottom-8 md:bottom-12 z-40 flex items-center gap-2 sm:gap-4 bg-white/5 backdrop-blur-md border border-white/10 p-1.5 sm:p-2 rounded-full pl-4 sm:pl-6 pr-1.5 sm:pr-2 shadow-2xl"
             >
               <button
                 onClick={() => onNavigate?.(1)}
@@ -150,7 +165,7 @@ const Hero: React.FC<HeroProps> = ({ onNavigate }) => {
 
               <button
                 onClick={() => onNavigate?.(5)}
-                className="bg-[#7000FF] hover:bg-[#6000E0] text-white text-sm font-bold px-6 py-3 rounded-full transition-all shadow-lg shadow-[#7000FF]/25"
+                className="bg-[#7000FF] hover:bg-[#6000E0] text-white text-xs sm:text-sm font-bold px-4 sm:px-6 py-2.5 sm:py-3 rounded-full transition-all shadow-lg shadow-[#7000FF]/25"
               >
                 Hire Me
               </button>
@@ -172,7 +187,7 @@ const Hero: React.FC<HeroProps> = ({ onNavigate }) => {
         <motion.div
           animate={{ y: [0, 6, 0] }}
           transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
-          className="w-8 h-8 rounded-full border border-white/20 flex items-center justify-center group-hover:border-white/40 transition-colors"
+          className="w-11 h-11 md:w-8 md:h-8 rounded-full border border-white/20 flex items-center justify-center group-hover:border-white/40 transition-colors"
         >
           <ArrowDown size={14} className="text-white/50 group-hover:text-white/80 transition-colors" />
         </motion.div>

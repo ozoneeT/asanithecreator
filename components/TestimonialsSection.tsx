@@ -16,15 +16,15 @@ const TestimonialsSection: React.FC = () => {
             {/* Chat Container - Centered with max-width */}
             <div className="relative w-full h-full flex flex-col items-center justify-center">
                 {/* Chat window with glass effect - constrained width */}
-                <div className="relative h-full w-full max-w-4xl bg-black/20 backdrop-blur-sm overflow-hidden flex flex-col mx-auto">
+                <div className="relative h-full w-full max-w-full md:max-w-4xl bg-black/20 backdrop-blur-sm overflow-hidden flex flex-col mx-auto">
                     {/* Header */}
-                    <div className="relative h-20 md:h-24 bg-gradient-to-b from-black/60 to-transparent backdrop-blur-sm border-b border-white/5 z-10 flex items-center justify-between px-6 md:px-12 flex-shrink-0 mt-16 md:mt-20">
+                    <div className="relative h-16 md:h-24 bg-gradient-to-b from-black/60 to-transparent backdrop-blur-sm border-b border-white/5 z-10 flex items-center justify-between px-4 sm:px-6 md:px-12 flex-shrink-0 mt-14 md:mt-20">
                         <div className="flex items-center gap-3">
                             <div className="w-2 h-2 rounded-full bg-[#bfff00] animate-pulse" />
                             <span className="text-xs md:text-sm text-white/60 uppercase tracking-wider">Live Messages</span>
                         </div>
                         <div>
-                            <h2 className="text-3xl md:text-5xl text-white" style={{ fontFamily: 'Brush Script MT, cursive' }}>Testimonials</h2>
+                            <h2 className="text-2xl md:text-5xl text-white" style={{ fontFamily: 'Brush Script MT, cursive' }}>Testimonials</h2>
                         </div>
                     </div>
 
@@ -39,13 +39,13 @@ const TestimonialsSection: React.FC = () => {
                         >
                             {/* Scrolling container with CSS animation */}
                             <div className="animate-scroll-up">
-                                <div className="p-6 md:p-12 space-y-6 w-full">
+                                <div className="p-4 sm:p-6 md:p-12 space-y-4 sm:space-y-6 w-full">
                                     {duplicatedTestimonials.map((msg, index) => (
                                         <div
                                             key={`${msg.id}-${index}`}
                                             className={`flex ${msg.type === 'booking' ? 'justify-start' : 'justify-end'}`}
                                         >
-                                            <div className={`max-w-[80%] ${msg.type === 'booking' ? 'order-2' : 'order-1'}`}>
+                                            <div className={`max-w-[90%] sm:max-w-[80%] ${msg.type === 'booking' ? 'order-2' : 'order-1'}`}>
                                                 {/* Message bubble */}
                                                 <div className={`
                                                     relative px-5 py-4 rounded-2xl
@@ -77,12 +77,12 @@ const TestimonialsSection: React.FC = () => {
                                                                 }`}>
                                                                 {msg.name}
                                                             </p>
-                                                            <p className={`text-[10px] ${msg.type === 'booking' ? 'text-white/50' : 'text-black/60'
+                                                            <p className={`text-[11px] ${msg.type === 'booking' ? 'text-white/50' : 'text-black/60'
                                                                 } uppercase tracking-wider`}>
                                                                 {msg.role}
                                                             </p>
                                                         </div>
-                                                        <span className={`text-[10px] ${msg.type === 'booking' ? 'text-white/40' : 'text-black/40'
+                                                        <span className={`text-[11px] ${msg.type === 'booking' ? 'text-white/40' : 'text-black/40'
                                                             }`}>
                                                             {msg.time}
                                                         </span>

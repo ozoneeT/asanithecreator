@@ -34,7 +34,7 @@ const Preloader: React.FC = () => {
       exit="exit"
       className="fixed inset-0 z-[100] flex items-center justify-center bg-[#0a0a0a]"
     >
-      <div className="flex overflow-hidden">
+      <div className="flex overflow-hidden px-4 sm:px-0">
         {letters.map((letter, i) => (
           <motion.span
             key={i}
@@ -42,7 +42,7 @@ const Preloader: React.FC = () => {
             variants={textVariants}
             initial="initial"
             animate="animate"
-            className={`text-4xl md:text-7xl font-light text-white uppercase tracking-[0.2em] ${letter === ' ' ? 'mx-4' : ''}`}
+            className={`text-[5vw] sm:text-4xl md:text-7xl font-light text-white uppercase tracking-[0.1em] sm:tracking-[0.2em] ${letter === ' ' ? 'mx-[1vw] sm:mx-4' : ''}`}
           >
             {letter}
           </motion.span>

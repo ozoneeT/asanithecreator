@@ -12,7 +12,7 @@ interface NavbarProps {
 const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentSection }) => {
   const [isOpen, setIsOpen] = useState(false);
 
-  const navItems = ['Work', 'About', 'Expertise', 'Contact'];
+  const navItems = ['Work', 'About', 'Services', 'Capabilities', 'Testimonials', 'Contact'];
 
   const handleClick = (item: string) => {
     onNavigate?.(item.toLowerCase());
@@ -32,7 +32,7 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentSection }) => {
           className={`flex flex-col leading-none group transition-opacity duration-500 ${currentSection === 1 ? 'opacity-0 pointer-events-none' : 'opacity-100 pointer-events-auto'}`}
         >
           <span className="text-xl md:text-2xl font-bold serif tracking-tight">ASANI</span>
-          <span className="text-[8px] md:text-[10px] uppercase tracking-[0.2em] opacity-70 group-hover:text-[#bfff00] transition-colors">the_creator</span>
+          <span className="text-[11px] md:text-[10px] uppercase tracking-[0.2em] opacity-70 group-hover:text-[#bfff00] transition-colors">the_creator</span>
         </button>
 
         <div className="hidden md:flex items-center gap-16 pointer-events-auto">
@@ -52,7 +52,7 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentSection }) => {
         <div className="md:hidden">
           <button
             onClick={() => setIsOpen(true)}
-            className="p-2 text-white pointer-events-auto"
+            className="p-3 min-w-[44px] min-h-[44px] flex items-center justify-center text-white pointer-events-auto"
             aria-label="Open Menu"
           >
             <div className="w-6 h-[1px] bg-white mb-1.5" />
@@ -68,11 +68,11 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentSection }) => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-[#0a0a0a] z-[100] flex flex-col p-10 md:hidden"
+            className="fixed inset-0 bg-[#0a0a0a] z-[100] flex flex-col p-6 sm:p-10 md:hidden"
           >
             <div className="flex justify-between items-center mb-20">
               <span className="text-sm font-bold tracking-tighter uppercase">{BRAND_NAME}</span>
-              <button onClick={() => setIsOpen(false)} className="p-2">
+              <button onClick={() => setIsOpen(false)} className="p-3 min-w-[44px] min-h-[44px] flex items-center justify-center">
                 <X size={28} strokeWidth={1} />
               </button>
             </div>
@@ -85,7 +85,7 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentSection }) => {
                   animate={{ x: 0, opacity: 1 }}
                   transition={{ delay: 0.1 * i }}
                   onClick={() => handleClick(item)}
-                  className="text-5xl serif hover:italic transition-all flex items-baseline gap-4 group text-left"
+                  className="text-4xl sm:text-5xl serif hover:italic transition-all flex items-baseline gap-4 group text-left"
                 >
                   <span className="text-xs serif italic opacity-30 group-hover:opacity-100 transition-opacity">0{i + 1}</span>
                   {item}
@@ -95,14 +95,14 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentSection }) => {
 
             <div className="mt-auto pt-10 border-t border-white/10 flex justify-between items-end">
               <div>
-                <p className="text-[10px] uppercase tracking-[0.3em] opacity-40 mb-4">Connect</p>
-                <div className="flex gap-4 text-xs">
-                  <a href="#">IG</a>
-                  <a href="#">TW</a>
-                  <a href="#">YT</a>
+                <p className="text-[11px] uppercase tracking-[0.3em] opacity-40 mb-4">Connect</p>
+                <div className="flex gap-2 text-xs">
+                  <a href="#" className="min-w-[44px] min-h-[44px] flex items-center justify-center">IG</a>
+                  <a href="#" className="min-w-[44px] min-h-[44px] flex items-center justify-center">TW</a>
+                  <a href="#" className="min-w-[44px] min-h-[44px] flex items-center justify-center">YT</a>
                 </div>
               </div>
-              <div className="text-[8px] uppercase tracking-widest opacity-20">&copy;2024 ASANI</div>
+              <div className="text-[11px] uppercase tracking-widest opacity-20">&copy;2024 ASANI</div>
             </div>
           </motion.div>
         )}

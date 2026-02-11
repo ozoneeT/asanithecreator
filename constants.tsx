@@ -3,7 +3,7 @@ import { Testimonial, SectionContent } from './types';
 
 export const BRAND_NAME = "Asani the_creator";
 
-export const USER_IMAGE = "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?q=80&w=1974&auto=format&fit=crop";
+export const USER_IMAGE = "/IMG_5039.png";
 
 export const VIDEO_FOOTAGE = [
   "https://images.unsplash.com/photo-1496337589254-7e19d01ced44?q=80&w=1000&auto=format&fit=crop",

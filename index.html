@@ -152,6 +152,27 @@
       animation: wave 2s ease-in-out infinite;
       transform-origin: 70% 70%;
     }
+
+    /* Fix h-screen on mobile browsers (address bar changes viewport) */
+    @supports (height: 100dvh) {
+      .h-screen {
+        height: 100dvh !important;
+      }
+    }
+
+    /* Disable custom cursor on touch devices */
+    @media (pointer: coarse) {
+
+      body,
+      a,
+      button,
+      [role="button"],
+      input,
+      select,
+      .cursor-pointer {
+        cursor: auto !important;
+      }
+    }
   </style>
   <script type="importmap">
 {
