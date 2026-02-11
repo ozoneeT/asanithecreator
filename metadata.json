@@ -1,0 +1,7 @@
+{
+  "name": "Asani the_creator Portfolio",
+  "description": "An elegant, high-end portfolio for content creator Asani, featuring GSAP stacked sections, custom pre-loaders, and Framer Motion animations.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
