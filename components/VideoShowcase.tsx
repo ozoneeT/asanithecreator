@@ -1,6 +1,6 @@
 
 import React, { useState, useReducer, useEffect, useRef, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   Play, Pause, SkipBack, SkipForward,
   Film, Music, Type, Smile, Sparkles, ArrowRightLeft, SlidersHorizontal,
@@ -655,16 +655,8 @@ const VideoShowcase: React.FC<VideoShowcaseProps> = ({ isActive = false }) => {
           {/* Preview */}
           <div className="flex-1 flex items-center justify-center p-3 min-h-0 relative">
             <div className="relative w-full h-full max-w-full max-h-full flex items-center justify-center overflow-hidden rounded-md bg-black">
-              {/* Base image (unfiltered) */}
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={state.previewSrc}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.25 }}
-                  className="w-full h-full flex items-center justify-center"
-                >
+              {/* Base video/image preview */}
+              <div className="w-full h-full flex items-center justify-center">
                   {(() => {
                     // Determine type based on current clip or previewSrc
                     const activeClip = state.timelineClips.find(c => c.src === state.previewSrc) || state.timelineClips[0];
@@ -728,7 +720,8 @@ const VideoShowcase: React.FC<VideoShowcaseProps> = ({ isActive = false }) => {
                           src={state.previewSrc}
                           className="w-full h-full object-contain"
                           style={{
-                            transform: `scale(${state.zoom / 50})`,
+                            transform: `scale(${state.zoom / 50}) translateZ(0)`,
+                            WebkitTransform: `scale(${state.zoom / 50}) translateZ(0)`,
                             ...(activeFilterCSS ? { filter: activeFilterCSS, opacity: state.filterStrength / 100 } : {})
                           }}
                           muted
@@ -754,8 +747,7 @@ const VideoShowcase: React.FC<VideoShowcaseProps> = ({ isActive = false }) => {
                       />
                     );
                   })()}
-                </motion.div>
-              </AnimatePresence>
+                </div>
               {/* Unmute overlay — shown when autoplay forced muted playback */}
               {state.isPlaying && isMuted && (
                 <button

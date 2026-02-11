@@ -131,12 +131,16 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ isActive = false }) =
                 attemptPlay();
             }
 
-            // Wait for video to be ready
-            const onCanPlay = () => {
+            // Wait for video to be ready (or mark ready immediately if already loaded)
+            if (video.readyState >= 3) {
                 if (!cancelled) setVideoReady(true);
-                video.removeEventListener('canplay', onCanPlay);
-            };
-            video.addEventListener('canplay', onCanPlay);
+            } else {
+                const onCanPlay = () => {
+                    if (!cancelled) setVideoReady(true);
+                    video.removeEventListener('canplay', onCanPlay);
+                };
+                video.addEventListener('canplay', onCanPlay);
+            }
         } catch {
             if (!cancelled) setVideoReady(true);
         }
@@ -257,7 +261,7 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ isActive = false }) =
                                         playsInline
                                         preload="auto"
                                         loop={false}
-                                        style={{ pointerEvents: 'none' }}
+                                        style={{ pointerEvents: 'none', transform: 'translateZ(0)', WebkitTransform: 'translateZ(0)' }}
                                     />
 
                                     {/* Gradient overlay */}

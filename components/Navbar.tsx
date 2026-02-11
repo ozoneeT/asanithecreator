@@ -52,11 +52,11 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentSection }) => {
         <div className="md:hidden">
           <button
             onClick={() => setIsOpen(true)}
-            className="p-3 min-w-[44px] min-h-[44px] flex items-center justify-center text-white pointer-events-auto"
+            className="p-3 min-w-[44px] min-h-[44px] flex flex-col items-end justify-center gap-1.5 text-white pointer-events-auto"
             aria-label="Open Menu"
           >
-            <div className="w-6 h-[1px] bg-white mb-1.5" />
-            <div className="w-4 h-[1px] bg-white ml-auto" />
+            <div className="w-6 h-[1.5px] bg-white rounded-full" />
+            <div className="w-4 h-[1.5px] bg-white rounded-full" />
           </button>
         </div>
       </motion.nav>
