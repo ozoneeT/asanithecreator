@@ -312,17 +312,34 @@ const VideoShowcase: React.FC<VideoShowcaseProps> = ({ isActive = false }) => {
     }
   }, [state.isPlaying]);
 
-  // Sync HTML5 video play/pause state
+  // Sync HTML5 video play/pause state (with retry for slow mobile connections)
   useEffect(() => {
     const video = videoElementRef.current;
     if (!video) return;
-    if (state.isPlaying) {
-      video.play().catch(() => {
-        dispatch({ type: 'SET_PLAYING', value: false });
-      });
-    } else {
+
+    if (!state.isPlaying) {
       video.pause();
+      return;
     }
+
+    let cancelled = false;
+
+    const attemptPlay = () => {
+      if (cancelled) return;
+      video.play().catch(() => {
+        // Video not ready yet — retry when enough data loads
+        if (!cancelled) {
+          video.addEventListener('canplay', attemptPlay, { once: true });
+        }
+      });
+    };
+
+    attemptPlay();
+
+    return () => {
+      cancelled = true;
+      video.removeEventListener('canplay', attemptPlay);
+    };
   }, [state.isPlaying, state.previewSrc]);
 
   // Sync seeking for Vimeo
@@ -709,13 +726,14 @@ const VideoShowcase: React.FC<VideoShowcaseProps> = ({ isActive = false }) => {
                         <video
                           ref={videoElementRef}
                           src={state.previewSrc}
-                          className="max-w-full max-h-full object-contain"
+                          className="w-full h-full object-contain"
                           style={{
                             transform: `scale(${state.zoom / 50})`,
                             ...(activeFilterCSS ? { filter: activeFilterCSS, opacity: state.filterStrength / 100 } : {})
                           }}
                           muted
                           playsInline
+                          preload="auto"
                           onTimeUpdate={(e) => {
                             const video = e.currentTarget;
                             dispatch({ type: 'SET_CURRENT_TIME', ms: video.currentTime * 1000 });

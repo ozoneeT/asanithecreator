@@ -117,14 +117,18 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ isActive = false }) =
             video.currentTime = 0;
             if (bgVideo) bgVideo.currentTime = 0;
 
-            // Only play when section is active
+            // Only play when section is active (with retry for slow mobile connections)
             if (isActive) {
-                const playPromise = video.play();
-                if (bgVideo) bgVideo.play().catch(() => { });
-
-                if (playPromise !== undefined) {
-                    playPromise.catch(() => { });
-                }
+                const attemptPlay = () => {
+                    if (cancelled) return;
+                    video.play().catch(() => {
+                        if (!cancelled) {
+                            video.addEventListener('canplay', attemptPlay, { once: true });
+                        }
+                    });
+                    if (bgVideo) bgVideo.play().catch(() => { });
+                };
+                attemptPlay();
             }
 
             // Wait for video to be ready
@@ -148,20 +152,35 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ isActive = false }) =
         };
     }, [activeIndex, isActive]);
 
-    // Pause/Resume video based on isPaused state
+    // Pause/Resume video based on isPaused state (with retry for mobile)
     useEffect(() => {
         const video = document.getElementById(`service-video-${activeIndex}`) as HTMLVideoElement;
         const bgVideo = document.getElementById(`service-video-bg-${activeIndex}`) as HTMLVideoElement;
 
         if (!video) return;
 
+        let cancelled = false;
+
         if (!isActive || isPaused) {
             video.pause();
             if (bgVideo) bgVideo.pause();
         } else if (videoReady) {
-            video.play().catch(() => { });
-            if (bgVideo) bgVideo.play().catch(() => { });
+            const attemptPlay = () => {
+                if (cancelled) return;
+                video.play().catch(() => {
+                    if (!cancelled) {
+                        video.addEventListener('canplay', attemptPlay, { once: true });
+                    }
+                });
+                if (bgVideo) bgVideo.play().catch(() => { });
+            };
+            attemptPlay();
         }
+
+        return () => {
+            cancelled = true;
+            video.removeEventListener('canplay', () => {});
+        };
     }, [isPaused, activeIndex, isActive, videoReady]);
 
     // Manual change handler
@@ -223,6 +242,7 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ isActive = false }) =
                                             className="w-full h-full object-cover"
                                             muted
                                             playsInline
+                                            preload="auto"
                                             loop={false}
                                             style={{ pointerEvents: 'none' }}
                                         />
@@ -235,6 +255,7 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ isActive = false }) =
                                         className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-700 ${isActive ? 'opacity-70' : 'opacity-30'}`}
                                         muted
                                         playsInline
+                                        preload="auto"
                                         loop={false}
                                         style={{ pointerEvents: 'none' }}
                                     />
