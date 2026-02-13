@@ -674,6 +674,7 @@ const VideoShowcase: React.FC<VideoShowcaseProps> = ({ isActive = false }) => {
                           src={state.previewSrc}
                           className="w-full h-full"
                           playsInline
+                          autoPlay
                           muted={isMuted}
                           loop={false}
                           style={{

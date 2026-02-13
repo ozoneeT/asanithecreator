@@ -51,14 +51,37 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ isActive = false }) =
     const [activeIndex, setActiveIndex] = useState(0);
     const [progress, setProgress] = useState(0);
     const [isPaused, setIsPaused] = useState(false);
-    const [videoReady, setVideoReady] = useState(false);
 
     const sectionRef = useRef(null);
 
     // Refs for clean timer logic
     const activeIndexRef = useRef(0);
     const progressRef = useRef(0);
-    const videoRef = useRef<HTMLVideoElement | null>(null);
+    const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
+    const bgVideoRefs = useRef<(HTMLVideoElement | null)[]>([]);
+
+    useEffect(() => {
+        // Control main videos
+        videoRefs.current.forEach((video) => {
+            if (video) {
+                if (isActive && !isPaused) {
+                    video.play().catch(e => console.log("Auto-play prevented:", e));
+                } else {
+                    video.pause();
+                }
+            }
+        });
+        // Control background videos
+        bgVideoRefs.current.forEach((video) => {
+            if (video) {
+                if (isActive && !isPaused) {
+                    video.play().catch(e => console.log("Bg Auto-play prevented:", e));
+                } else {
+                    video.pause();
+                }
+            }
+        });
+    }, [isActive, isPaused]);
 
     // Progress tracking is now handled by ReactPlayer's onProgress callback
     // No need for manual RAF-based updates
@@ -67,7 +90,6 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ isActive = false }) =
     useEffect(() => {
         setProgress(0);
         progressRef.current = 0;
-        setVideoReady(true); // ReactPlayer handles its own ready state
     }, [activeIndex]);
 
     // ReactPlayer handles play/pause automatically via the playing prop
@@ -127,6 +149,7 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ isActive = false }) =
                                     >
                                         {/* @ts-ignore - ReactPlayer types have issues */}
                                         <video
+                                            ref={el => { bgVideoRefs.current[index] = el; }}
                                             src={service.videoSrc}
                                             className="w-full h-full object-cover"
                                             autoPlay
@@ -141,21 +164,7 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ isActive = false }) =
                                     <div className={`absolute inset-0 transition-opacity duration-700 ${isActive ? 'opacity-70' : 'opacity-30'}`}>
                                         {/* @ts-ignore - ReactPlayer types have issues */}
                                         <video
-                                            ref={(el) => {
-                                                if (el) {
-                                                    // Ensure video plays when active
-                                                    if (isActive && !isPaused) {
-                                                        const playPromise = el.play();
-                                                        if (playPromise !== undefined) {
-                                                            playPromise.catch(error => {
-                                                                console.log("Auto-play was prevented:", error);
-                                                            });
-                                                        }
-                                                    } else {
-                                                        el.pause();
-                                                    }
-                                                }
-                                            }}
+                                            ref={el => { videoRefs.current[index] = el; }}
                                             src={service.videoSrc}
                                             className="w-full h-full object-contain"
                                             muted
