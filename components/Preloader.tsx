@@ -10,7 +10,7 @@ const Preloader: React.FC = () => {
     initial: { opacity: 1 },
     exit: {
       opacity: 0,
-      transition: { duration: 0.6, ease: [0.4, 0, 0.2, 1] }
+      transition: { duration: 0.6, ease: [0.4, 0, 0.2, 1] as const }
     }
   };
 
@@ -22,7 +22,7 @@ const Preloader: React.FC = () => {
       transition: {
         delay: 0.1 * i,
         duration: 0.8,
-        ease: [0.33, 1, 0.68, 1]
+        ease: [0.33, 1, 0.68, 1] as const
       }
     })
   };

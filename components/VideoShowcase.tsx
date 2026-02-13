@@ -10,7 +10,10 @@ import {
 } from 'lucide-react';
 
 import Player from '@vimeo/player';
+import ReactPlayer from 'react-player';
 import { VIDEO_FOOTAGE } from '../constants';
+
+const ReactPlayerFixed = ReactPlayer as unknown as React.ComponentType<any>;
 
 // ─── Types ────────────────────────────────────────────────────
 
@@ -90,7 +93,7 @@ const MEDIA_LIBRARY: MediaItem[] = [
   {
     id: 'media-video-1',
     type: 'video',
-    src: '/Production Studio.MP4',
+    src: '/Production_Studio.MP4',
     thumbnail: '/vimeo_thumb.png',
     name: 'Production_Studio_Reel.mp4',
     duration: '01:24',
@@ -312,49 +315,22 @@ const VideoShowcase: React.FC<VideoShowcaseProps> = ({ isActive = false }) => {
     }
   }, [state.isPlaying]);
 
-  // Sync HTML5 video play/pause state (with retry for slow mobile connections)
+  // ReactPlayer handles play/pause automatically via the playing prop
+  // No need for manual retry logic
+
+  // Sync Native Video Element play/pause
   useEffect(() => {
-    const video = videoElementRef.current;
-    if (!video) return;
-
-    if (!state.isPlaying) {
-      video.pause();
-      return;
+    if (videoElementRef.current) {
+      if (state.isPlaying) {
+        videoElementRef.current.play().catch(err => console.error("Native video play error:", err));
+      } else {
+        videoElementRef.current.pause();
+      }
     }
+  }, [state.isPlaying]);
 
-    let cancelled = false;
-
-    const attemptPlay = () => {
-      if (cancelled) return;
-      video.play().catch(() => {
-        // Video not ready yet — retry when enough data loads
-        if (!cancelled) {
-          video.addEventListener('canplay', attemptPlay, { once: true });
-        }
-      });
-    };
-
-    attemptPlay();
-
-    return () => {
-      cancelled = true;
-      video.removeEventListener('canplay', attemptPlay);
-    };
-  }, [state.isPlaying, state.previewSrc]);
-
-  // Sync seeking for Vimeo
-  useEffect(() => {
-    if (vimeoPlayerRef.current && !state.isPlaying) {
-      vimeoPlayerRef.current.setCurrentTime(state.currentTimeMs / 1000).catch(() => { });
-    }
-  }, [state.currentTimeMs, state.isPlaying]);
-
-  // Sync seeking for HTML5 video
-  useEffect(() => {
-    if (videoElementRef.current && !state.isPlaying) {
-      videoElementRef.current.currentTime = state.currentTimeMs / 1000;
-    }
-  }, [state.currentTimeMs, state.isPlaying]);
+  // ReactPlayer handles seeking internally via currentTime prop if needed
+  // Metadata is handled by ReactPlayer's onReady and onDuration callbacks
 
   // Sync Volume for Vimeo
   useEffect(() => {
@@ -363,40 +339,8 @@ const VideoShowcase: React.FC<VideoShowcaseProps> = ({ isActive = false }) => {
     }
   }, [state.volume]);
 
-  // Sync Volume for HTML5 video
-  useEffect(() => {
-    if (videoElementRef.current) {
-      videoElementRef.current.volume = state.volume / 100;
-    }
-  }, [state.volume]);
-
-  // Update video duration when metadata loads
-  useEffect(() => {
-    if (videoElementRef.current) {
-      const handleLoadedMetadata = () => {
-        const video = videoElementRef.current;
-        if (video && video.duration) {
-          const durationMs = video.duration * 1000;
-          // Find the clip ID for this video
-          const activeClip = state.timelineClips.find(c => c.src === state.previewSrc);
-          if (activeClip) {
-            dispatch({ type: 'UPDATE_CLIP_DURATION', clipId: activeClip.id, durationMs });
-          }
-        }
-      };
-
-      videoElementRef.current.addEventListener('loadedmetadata', handleLoadedMetadata);
-
-      // If metadata is already loaded, call handler immediately
-      if (videoElementRef.current.duration) {
-        handleLoadedMetadata();
-      }
-
-      return () => {
-        videoElementRef.current?.removeEventListener('loadedmetadata', handleLoadedMetadata);
-      };
-    }
-  }, [state.previewSrc, state.timelineClips]);
+  // ReactPlayer handles volume via the volume prop (0-1)
+  // ReactPlayer handles duration via onDuration callback
 
   // Sync fullscreen state with browser events (e.g. user presses Esc)
   useEffect(() => {
@@ -487,7 +431,7 @@ const VideoShowcase: React.FC<VideoShowcaseProps> = ({ isActive = false }) => {
     e.dataTransfer.effectAllowed = 'copy';
   };
 
-  const onTimelineDrop = (e: React.DragEvent) => {
+  const onTimelineDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     const mediaId = e.dataTransfer.getData('application/media-id');
     const media = MEDIA_LIBRARY.find(m => m.id === mediaId);
@@ -597,7 +541,7 @@ const VideoShowcase: React.FC<VideoShowcaseProps> = ({ isActive = false }) => {
                 <motion.div
                   key={item.id}
                   draggable
-                  onDragStart={e => onDragStart(e, item)}
+                  onDragStart={e => onDragStart(e as unknown as React.DragEvent, item)}
                   onClick={() => dispatch({ type: 'SET_PREVIEW', src: item.src })}
                   whileHover={{ scale: 1.03 }}
                   className="relative rounded-lg overflow-hidden cursor-grab active:cursor-grabbing group bg-[#16162a]"
@@ -657,97 +601,119 @@ const VideoShowcase: React.FC<VideoShowcaseProps> = ({ isActive = false }) => {
             <div className="relative w-full h-full max-w-full max-h-full flex items-center justify-center overflow-hidden rounded-md bg-black">
               {/* Base video/image preview */}
               <div className="w-full h-full flex items-center justify-center">
-                  {(() => {
-                    // Determine type based on current clip or previewSrc
-                    const activeClip = state.timelineClips.find(c => c.src === state.previewSrc) || state.timelineClips[0];
-                    const isVimeo = activeClip?.type === 'vimeo' || state.previewSrc.includes('vimeo');
+                {(() => {
+                  // Determine type based on current clip or previewSrc
+                  const activeClip = state.timelineClips.find(c => c.src === state.previewSrc) || state.timelineClips[0];
+                  const isVimeo = activeClip?.type === 'vimeo' || state.previewSrc.includes('vimeo');
 
-                    if (isVimeo) {
-                      return (
-                        <div className="w-full h-full bg-black relative">
-                          <iframe
-                            ref={iframeRef}
-                            src={state.previewSrc}
-                            className="w-full h-full"
-                            frameBorder="0"
-                            allow="autoplay; fullscreen; picture-in-picture"
-                            allowFullScreen
-                            style={{
-                              // Apply zoom to container or iframe? Applying to iframe might cut off content.
-                              // For simplicity in this mock editor, we'll scale the container
-                              transform: `scale(${state.zoom / 50})`,
-                              pointerEvents: 'none', // Disable mouse interaction to prevent scroll blocking
-                              ...(activeFilterCSS ? { filter: activeFilterCSS, opacity: state.filterStrength / 100 } : {})
-                            }}
-                            onLoad={() => {
-                              if (iframeRef.current) {
-                                const player = new Player(iframeRef.current);
-                                vimeoPlayerRef.current = player;
+                  if (isVimeo) {
+                    return (
+                      <div className="w-full h-full bg-black relative">
+                        <iframe
+                          ref={iframeRef}
+                          src={state.previewSrc}
+                          className="w-full h-full"
+                          frameBorder="0"
+                          allow="autoplay; fullscreen; picture-in-picture"
+                          allowFullScreen
+                          style={{
+                            // Apply zoom to container or iframe? Applying to iframe might cut off content.
+                            // For simplicity in this mock editor, we'll scale the container
+                            transform: `scale(${state.zoom / 50})`,
+                            pointerEvents: 'none', // Disable mouse interaction to prevent scroll blocking
+                            ...(activeFilterCSS ? { filter: activeFilterCSS, opacity: state.filterStrength / 100 } : {})
+                          }}
+                          onLoad={() => {
+                            if (iframeRef.current) {
+                              const player = new Player(iframeRef.current);
+                              vimeoPlayerRef.current = player;
 
-                                // Sync Duration from Vimeo
-                                player.getDuration().then((duration) => {
-                                  console.log('Vimeo duration:', duration);
-                                  // Update the timeline clip. Assuming 'clip-1' is the Vimeo clip.
-                                  dispatch({ type: 'UPDATE_CLIP_DURATION', clipId: 'clip-1', durationMs: duration * 1000 });
-                                }).catch(e => console.error('Failed to get duration', e));
+                              // Sync Duration from Vimeo
+                              player.getDuration().then((duration) => {
+                                console.log('Vimeo duration:', duration);
+                                // Update the timeline clip. Assuming 'clip-1' is the Vimeo clip.
+                                dispatch({ type: 'UPDATE_CLIP_DURATION', clipId: 'clip-1', durationMs: duration * 1000 });
+                              }).catch(e => console.error('Failed to get duration', e));
 
-                                player.on('play', () => {
-                                  if (!isPlayingRef.current) dispatch({ type: 'TOGGLE_PLAY' });
-                                });
-                                player.on('pause', () => {
-                                  if (isPlayingRef.current) dispatch({ type: 'TOGGLE_PLAY' });
-                                });
-                                player.on('timeupdate', (data) => {
-                                  // Sync timeline with vimeo time if playing
-                                  // We might need to handle this carefully to avoid loops
-                                });
-                              }
-                            }}
-                          />
-                          {/* Overlay removed to allow direct interaction, but we sync state via events */}
-                        </div>
-                      );
-                    }
+                              player.on('play', () => {
+                                if (!isPlayingRef.current) dispatch({ type: 'TOGGLE_PLAY' });
+                              });
+                              player.on('pause', () => {
+                                if (isPlayingRef.current) dispatch({ type: 'TOGGLE_PLAY' });
+                              });
+                              player.on('timeupdate', (data) => {
+                                // Sync timeline with vimeo time if playing
+                                // We might need to handle this carefully to avoid loops
+                              });
+                            }
+                          }}
+                        />
+                        {/* Overlay removed to allow direct interaction, but we sync state via events */}
+                      </div>
+                    );
+                  }
 
-                    // Check if it's a video file (MP4)
-                    const isVideoFile = state.previewSrc.toLowerCase().endsWith('.mp4') ||
-                      state.previewSrc.toLowerCase().endsWith('.mov');
+                  // Check if it's a video file (MP4)
+                  const isVideoFile = true; // Force true for now if it's in media library, or refine check logic
+                  // const isVideoFile = state.previewSrc.toLowerCase().endsWith('.mp4') ||
+                  //   state.previewSrc.toLowerCase().endsWith('.mov');
 
-                    if (isVideoFile) {
-                      return (
+                  if (isVideoFile) {
+                    // Get the active clip to access thumbnail
+                    const activeClip = state.timelineClips.find(c => c.src === state.previewSrc);
+
+                    return (
+                      <div className="w-full h-full" style={{
+                        transform: `scale(${state.zoom / 50})`,
+                        ...(activeFilterCSS ? { filter: activeFilterCSS, opacity: state.filterStrength / 100 } : {})
+                      }}>
+                        {/* @ts-ignore - ReactPlayer types have issues */}
+                        {/* Native Video Element for better local playback */}
                         <video
                           ref={videoElementRef}
                           src={state.previewSrc}
-                          className="w-full h-full object-contain"
-                          style={{
-                            transform: `scale(${state.zoom / 50}) translateZ(0)`,
-                            WebkitTransform: `scale(${state.zoom / 50}) translateZ(0)`,
-                            ...(activeFilterCSS ? { filter: activeFilterCSS, opacity: state.filterStrength / 100 } : {})
-                          }}
-                          muted
+                          className="w-full h-full"
                           playsInline
-                          preload="auto"
+                          muted={isMuted}
+                          loop={false}
+                          style={{
+                            objectFit: 'contain',
+                            transform: 'translateZ(0)',
+                            WebkitTransform: 'translateZ(0)'
+                          }}
                           onTimeUpdate={(e) => {
                             const video = e.currentTarget;
                             dispatch({ type: 'SET_CURRENT_TIME', ms: video.currentTime * 1000 });
                           }}
                           onEnded={() => {
                             dispatch({ type: 'VIDEO_ENDED' });
-                            if (videoElementRef.current) videoElementRef.current.currentTime = 0;
+                          }}
+                          onError={(e) => {
+                            console.error('Video playback error:', e);
+                          }}
+                          onLoadedMetadata={(e) => {
+                            console.log('Video ready:', state.previewSrc);
+                            // Ensure volume and play state are synced
+                            const video = e.currentTarget;
+                            video.volume = state.volume / 100;
+                            if (state.isPlaying) {
+                              video.play().catch(err => console.error("Play failed:", err));
+                            }
                           }}
                         />
-                      );
-                    }
-
-                    return (
-                      <img
-                        src={state.previewSrc}
-                        className="max-w-full max-h-full object-contain"
-                        style={{ transform: `scale(${state.zoom / 50})` }}
-                      />
+                      </div>
                     );
-                  })()}
-                </div>
+                  }
+
+                  return (
+                    <img
+                      src={state.previewSrc}
+                      className="max-w-full max-h-full object-contain"
+                      style={{ transform: `scale(${state.zoom / 50})` }}
+                    />
+                  );
+                })()}
+              </div>
               {/* Unmute overlay — shown when autoplay forced muted playback */}
               {state.isPlaying && isMuted && (
                 <button

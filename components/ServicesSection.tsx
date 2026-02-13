@@ -2,6 +2,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Camera, Film, MonitorPlay, Zap, ArrowUpRight } from 'lucide-react';
+import ReactPlayer from 'react-player';
+
+const ReactPlayerFixed = ReactPlayer as unknown as React.ComponentType<any>;
 
 
 // Services with local video files
@@ -57,135 +60,17 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ isActive = false }) =
     const progressRef = useRef(0);
     const videoRef = useRef<HTMLVideoElement | null>(null);
 
-    // Video-duration-based timer — syncs with actual video playback using RAF for smooth updates
+    // Progress tracking is now handled by ReactPlayer's onProgress callback
+    // No need for manual RAF-based updates
+
+    // Reset progress when changing videos
     useEffect(() => {
-        if (isPaused || !isActive || !videoReady) return;
-
-        const video = document.getElementById(`service-video-${activeIndex}`) as HTMLVideoElement;
-        if (!video) return;
-
-        videoRef.current = video;
-        let animationFrameId: number;
-
-        const updateProgress = () => {
-            if (!video.duration || video.paused) {
-                animationFrameId = requestAnimationFrame(updateProgress);
-                return;
-            }
-
-            const currentProgress = (video.currentTime / video.duration) * 100;
-            progressRef.current = currentProgress;
-            setProgress(currentProgress);
-
-            animationFrameId = requestAnimationFrame(updateProgress);
-        };
-
-        const handleVideoEnd = () => {
-            progressRef.current = 0;
-            const nextIndex = (activeIndexRef.current + 1) % services.length;
-            activeIndexRef.current = nextIndex;
-            setActiveIndex(nextIndex);
-        };
-
-        // Start smooth progress updates
-        animationFrameId = requestAnimationFrame(updateProgress);
-        video.addEventListener('ended', handleVideoEnd);
-
-        return () => {
-            cancelAnimationFrame(animationFrameId);
-            video.removeEventListener('ended', handleVideoEnd);
-        };
-    }, [isPaused, isActive, videoReady, activeIndex]);
-
-    // Restart video and wait for it to be ready before starting timer
-    useEffect(() => {
-        setVideoReady(false);
         setProgress(0);
         progressRef.current = 0;
-        let cancelled = false;
+        setVideoReady(true); // ReactPlayer handles its own ready state
+    }, [activeIndex]);
 
-        const video = document.getElementById(`service-video-${activeIndex}`) as HTMLVideoElement;
-        const bgVideo = document.getElementById(`service-video-bg-${activeIndex}`) as HTMLVideoElement;
-
-        if (!video) {
-            setVideoReady(true);
-            return;
-        }
-
-        try {
-            // Reset both videos
-            video.currentTime = 0;
-            if (bgVideo) bgVideo.currentTime = 0;
-
-            // Only play when section is active (with retry for slow mobile connections)
-            if (isActive) {
-                const attemptPlay = () => {
-                    if (cancelled) return;
-                    video.play().catch(() => {
-                        if (!cancelled) {
-                            video.addEventListener('canplay', attemptPlay, { once: true });
-                        }
-                    });
-                    if (bgVideo) bgVideo.play().catch(() => { });
-                };
-                attemptPlay();
-            }
-
-            // Wait for video to be ready (or mark ready immediately if already loaded)
-            if (video.readyState >= 3) {
-                if (!cancelled) setVideoReady(true);
-            } else {
-                const onCanPlay = () => {
-                    if (!cancelled) setVideoReady(true);
-                    video.removeEventListener('canplay', onCanPlay);
-                };
-                video.addEventListener('canplay', onCanPlay);
-            }
-        } catch {
-            if (!cancelled) setVideoReady(true);
-        }
-
-        // Fallback: don't block forever if event never fires
-        const timeout = setTimeout(() => {
-            if (!cancelled) setVideoReady(true);
-        }, 4000);
-
-        return () => {
-            cancelled = true;
-            clearTimeout(timeout);
-        };
-    }, [activeIndex, isActive]);
-
-    // Pause/Resume video based on isPaused state (with retry for mobile)
-    useEffect(() => {
-        const video = document.getElementById(`service-video-${activeIndex}`) as HTMLVideoElement;
-        const bgVideo = document.getElementById(`service-video-bg-${activeIndex}`) as HTMLVideoElement;
-
-        if (!video) return;
-
-        let cancelled = false;
-
-        if (!isActive || isPaused) {
-            video.pause();
-            if (bgVideo) bgVideo.pause();
-        } else if (videoReady) {
-            const attemptPlay = () => {
-                if (cancelled) return;
-                video.play().catch(() => {
-                    if (!cancelled) {
-                        video.addEventListener('canplay', attemptPlay, { once: true });
-                    }
-                });
-                if (bgVideo) bgVideo.play().catch(() => { });
-            };
-            attemptPlay();
-        }
-
-        return () => {
-            cancelled = true;
-            video.removeEventListener('canplay', () => {});
-        };
-    }, [isPaused, activeIndex, isActive, videoReady]);
+    // ReactPlayer handles play/pause automatically via the playing prop
 
     // Manual change handler
     const handleManualChange = (index: number) => {
@@ -240,29 +125,63 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ isActive = false }) =
                                         className={`absolute inset-[-40%] transition-opacity duration-700 ${isActive ? 'opacity-50' : 'opacity-20'}`}
                                         style={{ filter: 'blur(20px)' }}
                                     >
+                                        {/* @ts-ignore - ReactPlayer types have issues */}
                                         <video
-                                            id={`service-video-bg-${index}`}
                                             src={service.videoSrc}
                                             className="w-full h-full object-cover"
+                                            autoPlay
                                             muted
+                                            loop
                                             playsInline
-                                            preload="auto"
-                                            loop={false}
                                             style={{ pointerEvents: 'none' }}
                                         />
                                     </div>
 
                                     {/* Layer 2: Clear video (centered, normal aspect ratio) */}
-                                    <video
-                                        id={`service-video-${index}`}
-                                        src={service.videoSrc}
-                                        className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-700 ${isActive ? 'opacity-70' : 'opacity-30'}`}
-                                        muted
-                                        playsInline
-                                        preload="auto"
-                                        loop={false}
-                                        style={{ pointerEvents: 'none', transform: 'translateZ(0)', WebkitTransform: 'translateZ(0)' }}
-                                    />
+                                    <div className={`absolute inset-0 transition-opacity duration-700 ${isActive ? 'opacity-70' : 'opacity-30'}`}>
+                                        {/* @ts-ignore - ReactPlayer types have issues */}
+                                        <video
+                                            ref={(el) => {
+                                                if (el) {
+                                                    // Ensure video plays when active
+                                                    if (isActive && !isPaused) {
+                                                        const playPromise = el.play();
+                                                        if (playPromise !== undefined) {
+                                                            playPromise.catch(error => {
+                                                                console.log("Auto-play was prevented:", error);
+                                                            });
+                                                        }
+                                                    } else {
+                                                        el.pause();
+                                                    }
+                                                }
+                                            }}
+                                            src={service.videoSrc}
+                                            className="w-full h-full object-contain"
+                                            muted
+                                            loop
+                                            playsInline
+                                            autoPlay
+                                            style={{ pointerEvents: 'none' }}
+                                            onTimeUpdate={(e) => {
+                                                if (isActive && index === activeIndex) {
+                                                    const video = e.currentTarget;
+                                                    const currentProgress = (video.currentTime / video.duration) * 100;
+                                                    progressRef.current = currentProgress;
+                                                    setProgress(currentProgress);
+                                                }
+                                            }}
+                                            onEnded={() => {
+                                                console.log(`Video ended: ${service.videoSrc}`);
+                                                if (isActive && index === activeIndex) {
+                                                    progressRef.current = 0;
+                                                    const nextIndex = (activeIndexRef.current + 1) % services.length;
+                                                    activeIndexRef.current = nextIndex;
+                                                    setActiveIndex(nextIndex);
+                                                }
+                                            }}
+                                        />
+                                    </div>
 
                                     {/* Gradient overlay */}
                                     <div className={`absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent transition-opacity duration-500 ${isActive ? 'opacity-80' : 'opacity-60'}`} />
