@@ -21,7 +21,7 @@ const Footer: React.FC = () => {
             transition={{ duration: 0.8 }}
             className="mb-6 md:mb-16"
           >
-            <span className="text-[11px] uppercase tracking-[0.4em] md:tracking-[0.6em] text-[#bfff00] mb-6 block font-bold">
+            <span className="text-[11px] uppercase tracking-[0.4em] md:tracking-[0.6em] text-[#bfff00] mb-2 mt-5 block font-bold">
               Available For Hire
             </span>
             <h2 className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-light leading-[1.1] tracking-tight">

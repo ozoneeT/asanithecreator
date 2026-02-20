@@ -65,7 +65,8 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ isActive = false }) =
             if (video) {
                 // Play ONLY if this entire section is active, the video is the active card, and it's not paused by touch
                 if (isActive && !isPaused && index === activeIndex) {
-                    // Strictly enforce muted DOM property before trying to play to satisfy iOS Safari
+                    // iOS Safari requires the muted *attribute*, not just the property, for autoplay
+                    video.setAttribute('muted', '');
                     video.muted = true;
                     video.play().catch(e => console.log("Auto-play prevented:", e));
                 } else {
@@ -141,7 +142,10 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ isActive = false }) =
                     onMouseLeave={() => setIsPaused(false)}
                 >
                     {services.map((service, index) => {
-                        const isActive = activeIndex === index;
+                        // Renamed from isActive to avoid shadowing the section-level isActive prop.
+                        // The prop controls whether the section is in view;
+                        // isCardActive controls which service card is expanded.
+                        const isCardActive = activeIndex === index;
                         return (
                             <motion.div
                                 key={service.id}
@@ -149,12 +153,12 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ isActive = false }) =
                                 onClick={() => handleManualChange(index)}
                                 onMouseEnter={() => {
                                     setIsPaused(true);
-                                    if (!isActive) handleManualChange(index);
+                                    if (!isCardActive) handleManualChange(index);
                                 }}
                                 onMouseLeave={() => setIsPaused(false)}
                                 className={`relative rounded-2xl overflow-hidden cursor-pointer select-none transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]
-                  ${isActive ? 'flex-[4] sm:flex-[3] md:flex-[4]' : 'flex-[0.5] sm:flex-1 hover:flex-[1.2]'}
-                  ${isActive ? 'grayscale-0' : 'grayscale hover:grayscale-0'}
+                  ${isCardActive ? 'flex-[4] sm:flex-[3] md:flex-[4]' : 'flex-[0.5] sm:flex-1 hover:flex-[1.2]'}
+                  ${isCardActive ? 'grayscale-0' : 'grayscale hover:grayscale-0'}
                 `}
                             >
                                 {/* Background Media — two layers: blurry fill + clear video */}
@@ -162,7 +166,7 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ isActive = false }) =
                                     {/* Layer 1: Blurry moving gradient background */}
                                     <div className="absolute inset-0 overflow-hidden pointer-events-none">
                                         <motion.div
-                                            animate={isActive ? {
+                                            animate={isCardActive ? {
                                                 scale: [1, 1.2, 1],
                                                 rotate: [0, 90, 0]
                                             } : {
@@ -170,7 +174,7 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ isActive = false }) =
                                                 rotate: 0
                                             }}
                                             transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
-                                            className={`absolute inset-[-50%] transition-opacity duration-700 ${isActive ? 'opacity-80' : 'opacity-30'}`}
+                                            className={`absolute inset-[-50%] transition-opacity duration-700 ${isCardActive ? 'opacity-80' : 'opacity-30'}`}
                                             style={{
                                                 background: 'radial-gradient(circle at 50% 50%, rgba(191,255,0,0.15) 0%, rgba(112,0,255,0.15) 50%, transparent 100%)',
                                                 filter: 'blur(40px)'
@@ -179,7 +183,7 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ isActive = false }) =
                                     </div>
 
                                     {/* Layer 2: Clear video (centered, normal aspect ratio) */}
-                                    <div className={`absolute inset-0 transition-opacity duration-700 ${isActive ? 'opacity-70 z-10' : 'opacity-30 z-0'}`}>
+                                    <div className={`absolute inset-0 transition-opacity duration-700 ${isCardActive ? 'opacity-70 z-10' : 'opacity-30 z-0'}`}>
                                         <video
                                             ref={el => {
                                                 videoRefs.current[index] = el;
@@ -191,14 +195,13 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ isActive = false }) =
                                             muted={true}
                                             loop={false} // NEVER loop. We want onEnded to fire so we can advance to the next card.
                                             playsInline={true}
-                                            preload={isActive ? "auto" : "metadata"} // Use metadata so iOS recognizes it instantly for autoplay seamlessly
-                                            autoPlay={isActive} // Auto play ONLY if active
+                                            preload={isActive ? "auto" : "metadata"} // uses section isActive prop (not shadowed)
                                             style={{ pointerEvents: 'none' }}
                                             onCanPlay={(e) => {
                                                 e.currentTarget.playbackRate = 0.5;
                                             }}
                                             onTimeUpdate={(e) => {
-                                                if (isActive && !isPaused) {
+                                                if (isCardActive && !isPaused) {
                                                     const video = e.currentTarget;
                                                     const currentProgress = (video.currentTime / video.duration) * 100;
 
@@ -210,7 +213,7 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ isActive = false }) =
                                                 }
                                             }}
                                             onEnded={() => {
-                                                if (isActive) {
+                                                if (isCardActive) {
                                                     // Move to next slide
                                                     progressRef.current = 0;
                                                     setProgress(0);
@@ -223,11 +226,11 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ isActive = false }) =
                                     </div>
 
                                     {/* Gradient overlay */}
-                                    <div className={`absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent transition-opacity duration-500 ${isActive ? 'opacity-80' : 'opacity-60'}`} />
+                                    <div className={`absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent transition-opacity duration-500 ${isCardActive ? 'opacity-80' : 'opacity-60'}`} />
                                 </div>
 
                                 {/* Progress Bar (Visible only when active) */}
-                                {isActive && (
+                                {isCardActive && (
                                     <div className="absolute top-0 left-0 w-full h-1 bg-white/10 z-20">
                                         <motion.div
                                             className="h-full bg-[#bfff00]"
@@ -240,7 +243,7 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ isActive = false }) =
                                 {/* Content Container */}
                                 <div className="relative h-full z-10 p-4 md:p-6 flex flex-col justify-end">
                                     <AnimatePresence mode="wait">
-                                        {isActive ? (
+                                        {isCardActive ? (
                                             <motion.div
                                                 key="expanded"
                                                 initial={{ opacity: 0, y: 20 }}

@@ -207,6 +207,121 @@ export const TESTIMONIALS: Testimonial[] = [
   }
 ];
 
+// ─── Portfolio Data ───────────────────────────────────────────
+
+export type PortfolioCategory = 'Showreel' | 'Brand' | 'Lifestyle' | 'Events' | 'Social';
+
+export const CATEGORY_COLORS: Record<PortfolioCategory, string> = {
+  Showreel: '#7c5cfc',
+  Brand:    '#4a7dff',
+  Lifestyle:'#a855f7',
+  Events:   '#f43f5e',
+  Social:   '#22c55e',
+};
+
+export interface PortfolioItem {
+  id: string;
+  vimeoId: string;
+  name: string;
+  category: PortfolioCategory;
+  client: string;
+  year: string;
+  tags: string[];
+  duration: string;
+  durationMs: number;
+}
+
+export const PORTFOLIO_ITEMS: PortfolioItem[] = [
+  {
+    id: 'pi-showreel',
+    vimeoId: '1163715960',
+    name: 'Production Studio Showreel',
+    category: 'Showreel',
+    client: 'Asani the Creator',
+    year: '2024',
+    tags: ['showreel', 'compilation', 'cinematic'],
+    duration: '01:24',
+    durationMs: 84000,
+  },
+  {
+    id: 'pi-brand-1',
+    vimeoId: '1163715974',
+    name: 'Brand Campaign — Analee Craftiee',
+    category: 'Brand',
+    client: 'Analee Craftiee',
+    year: '2024',
+    tags: ['brand', 'product', 'UGC'],
+    duration: '00:45',
+    durationMs: 45000,
+  },
+  {
+    id: 'pi-lifestyle-1',
+    vimeoId: '1163715968',
+    name: 'Lifestyle Brand Reel',
+    category: 'Lifestyle',
+    client: 'Personal Brand',
+    year: '2024',
+    tags: ['lifestyle', 'personal brand'],
+    duration: '00:38',
+    durationMs: 38000,
+  },
+  {
+    id: 'pi-events-1',
+    vimeoId: '1163715925',
+    name: 'Wedding Event Coverage',
+    category: 'Events',
+    client: 'ADELOVE25',
+    year: '2024',
+    tags: ['wedding', 'event', 'cinematic'],
+    duration: '01:10',
+    durationMs: 70000,
+  },
+  {
+    id: 'pi-social-1',
+    vimeoId: '1163715942',
+    name: 'Social Media Promo',
+    category: 'Social',
+    client: 'Esther',
+    year: '2024',
+    tags: ['social', 'TikTok', 'trending'],
+    duration: '00:32',
+    durationMs: 32000,
+  },
+  {
+    id: 'pi-brand-2',
+    vimeoId: '1163715953',
+    name: 'Fitness Brand Launch',
+    category: 'Brand',
+    client: 'Michael',
+    year: '2024',
+    tags: ['fitness', 'promo', 'brand'],
+    duration: '00:50',
+    durationMs: 50000,
+  },
+  {
+    id: 'pi-events-2',
+    vimeoId: '1163715940',
+    name: 'Birthday Event Film',
+    category: 'Events',
+    client: 'Tobi',
+    year: '2024',
+    tags: ['birthday', 'event', 'reel'],
+    duration: '00:41',
+    durationMs: 41000,
+  },
+  {
+    id: 'pi-lifestyle-2',
+    vimeoId: '1163715958',
+    name: 'Pre-Wedding Reel',
+    category: 'Lifestyle',
+    client: 'Esther & Partner',
+    year: '2024',
+    tags: ['pre-wedding', 'lifestyle', 'viral'],
+    duration: '00:55',
+    durationMs: 55000,
+  },
+];
+
 export const PORTFOLIO_VIDEOS = [
   "https://vimeo.com/reviews/62c16a46-08f6-4b14-ae48-0fcc17399c52/videos/1163715974",
   "https://vimeo.com/reviews/62c16a46-08f6-4b14-ae48-0fcc17399c52/videos/1163715968",
