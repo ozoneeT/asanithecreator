@@ -121,7 +121,7 @@ const Home: React.FC = () => {
 
               {/* Testimonials Section (Replaces Brand Identity) */}
               <div className="snap-start shrink-0 h-screen w-full">
-                <TestimonialsSection />
+                <TestimonialsSection isActive={currentSection === 4} />
               </div>
 
               <div className="snap-start shrink-0 h-screen w-full">

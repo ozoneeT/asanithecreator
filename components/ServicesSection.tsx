@@ -65,6 +65,8 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ isActive = false }) =
             if (video) {
                 // Play ONLY if this entire section is active, the video is the active card, and it's not paused by touch
                 if (isActive && !isPaused && index === activeIndex) {
+                    // Strictly enforce muted DOM property before trying to play to satisfy iOS Safari
+                    video.muted = true;
                     video.play().catch(e => console.log("Auto-play prevented:", e));
                 } else {
                     video.pause();
@@ -107,15 +109,15 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ isActive = false }) =
         // Play new video from start
         const newVideo = videoRefs.current[index];
         if (newVideo) {
-            newVideo.load(); // Required since we set preload="none" on inactive videos
+            // iOS Safari requires the muted *attribute* (not just the property) for autoplay
+            newVideo.setAttribute('muted', '');
+            newVideo.muted = true;
             newVideo.currentTime = 0;
-            // Introduce a tiny delay so the browser can fetch the video headers before playing
-            setTimeout(() => {
-                const playPromise = newVideo.play();
-                if (playPromise !== undefined) {
-                    playPromise.catch(e => console.log("Play interrupted or not ready", e));
-                }
-            }, 50);
+            // Call play synchronously to maintain mobile Safari transient activation trust
+            const playPromise = newVideo.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(e => console.log("Play interrupted or not ready", e));
+            }
         }
     };
 
@@ -150,17 +152,6 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ isActive = false }) =
                                     if (!isActive) handleManualChange(index);
                                 }}
                                 onMouseLeave={() => setIsPaused(false)}
-                                onTouchStart={(e) => {
-                                    // Only pause if they actually tapped the active card.
-                                    // Prevent pausing if they are simply swiping across the screen.
-                                    if (isActive) {
-                                        setIsPaused(true);
-                                    } else {
-                                        handleManualChange(index);
-                                    }
-                                }}
-                                onTouchEnd={() => setIsPaused(false)}
-                                onTouchCancel={() => setIsPaused(false)}
                                 className={`relative rounded-2xl overflow-hidden cursor-pointer select-none transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]
                   ${isActive ? 'flex-[4] sm:flex-[3] md:flex-[4]' : 'flex-[0.5] sm:flex-1 hover:flex-[1.2]'}
                   ${isActive ? 'grayscale-0' : 'grayscale hover:grayscale-0'}
@@ -190,13 +181,17 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ isActive = false }) =
                                     {/* Layer 2: Clear video (centered, normal aspect ratio) */}
                                     <div className={`absolute inset-0 transition-opacity duration-700 ${isActive ? 'opacity-70 z-10' : 'opacity-30 z-0'}`}>
                                         <video
-                                            ref={el => { videoRefs.current[index] = el; }}
+                                            ref={el => {
+                                                videoRefs.current[index] = el;
+                                                // iOS Safari needs the muted HTML *attribute*, not just the DOM property
+                                                if (el) { el.setAttribute('muted', ''); el.muted = true; }
+                                            }}
                                             src={service.videoSrc}
-                                            className="w-full h-full object-contain object-center"
-                                            muted
+                                            className="w-full h-full object-contain object-center pointer-events-none"
+                                            muted={true}
                                             loop={false} // NEVER loop. We want onEnded to fire so we can advance to the next card.
-                                            playsInline
-                                            preload={isActive ? "auto" : "none"} // Prevent loading all 4 HD videos into mobile RAM at once
+                                            playsInline={true}
+                                            preload={isActive ? "auto" : "metadata"} // Use metadata so iOS recognizes it instantly for autoplay seamlessly
                                             autoPlay={isActive} // Auto play ONLY if active
                                             style={{ pointerEvents: 'none' }}
                                             onCanPlay={(e) => {

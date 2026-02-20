@@ -287,7 +287,9 @@ const VideoShowcase: React.FC<VideoShowcaseProps> = ({ isActive = false }) => {
   const timelineRef = useRef<HTMLDivElement>(null);
   const [isScrubbing, setIsScrubbing] = useState(false);
   const vimeoPlayerRef = useRef<Player | null>(null);
-  const videoElementRef = useRef<HTMLVideoElement | null>(null);
+  // One video element per source — never change src, only toggle display.
+  // This prevents any reload when switching clips or unmuting.
+  const videoRefsMap = useRef<Map<string, HTMLVideoElement | null>>(new Map());
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const playerContainerRef = useRef<HTMLDivElement>(null);
   const isPlayingRef = useRef(state.isPlaying);
@@ -318,16 +320,18 @@ const VideoShowcase: React.FC<VideoShowcaseProps> = ({ isActive = false }) => {
   // ReactPlayer handles play/pause automatically via the playing prop
   // No need for manual retry logic
 
-  // Sync Native Video Element play/pause
+  // Sync all video elements: play the active one, pause the rest
   useEffect(() => {
-    if (videoElementRef.current) {
-      if (state.isPlaying) {
-        videoElementRef.current.play().catch(err => console.error("Native video play error:", err));
+    videoRefsMap.current.forEach((video, src) => {
+      if (!video) return;
+      if (state.isPlaying && src === state.previewSrc) {
+        video.muted = isMuted;
+        video.play().catch(err => console.error("Native video play error:", err));
       } else {
-        videoElementRef.current.pause();
+        video.pause();
       }
-    }
-  }, [state.isPlaying]);
+    });
+  }, [state.isPlaying, state.previewSrc, isMuted]);
 
   // ReactPlayer handles seeking internally via currentTime prop if needed
   // Metadata is handled by ReactPlayer's onReady and onDuration callbacks
@@ -561,7 +565,7 @@ const VideoShowcase: React.FC<VideoShowcaseProps> = ({ isActive = false }) => {
                         {item.thumbnail ? (
                           <img src={item.thumbnail} alt={item.name} className="w-full h-full object-cover opacity-60" />
                         ) : (
-                          <video src={item.src} className="w-full h-full object-cover" muted />
+                          <video src={item.src} className="w-full h-full object-cover pointer-events-none" muted={true} playsInline={true} />
                         )}
                         <div className="absolute inset-0 flex items-center justify-center">
                           <div className="w-6 h-6 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
@@ -659,49 +663,53 @@ const VideoShowcase: React.FC<VideoShowcaseProps> = ({ isActive = false }) => {
                   //   state.previewSrc.toLowerCase().endsWith('.mov');
 
                   if (isVideoFile) {
-                    // Get the active clip to access thumbnail
-                    const activeClip = state.timelineClips.find(c => c.src === state.previewSrc);
-
+                    // Render one <video> per source — never change src.
+                    // Toggle display:none instead so browsers keep each video's buffer.
                     return (
-                      <div className="w-full h-full" style={{
+                      <div className="w-full h-full relative" style={{
                         transform: `scale(${state.zoom / 50})`,
                         ...(activeFilterCSS ? { filter: activeFilterCSS, opacity: state.filterStrength / 100 } : {})
                       }}>
-                        {/* @ts-ignore - ReactPlayer types have issues */}
-                        {/* Native Video Element for better local playback */}
-                        <video
-                          ref={videoElementRef}
-                          src={state.previewSrc}
-                          className="w-full h-full"
-                          playsInline
-                          autoPlay
-                          muted={isMuted}
-                          loop={false}
-                          style={{
-                            objectFit: 'contain',
-                            transform: 'translateZ(0)',
-                            WebkitTransform: 'translateZ(0)'
-                          }}
-                          onTimeUpdate={(e) => {
-                            const video = e.currentTarget;
-                            dispatch({ type: 'SET_CURRENT_TIME', ms: video.currentTime * 1000 });
-                          }}
-                          onEnded={() => {
-                            dispatch({ type: 'VIDEO_ENDED' });
-                          }}
-                          onError={(e) => {
-                            console.error('Video playback error:', e);
-                          }}
-                          onLoadedMetadata={(e) => {
-                            console.log('Video ready:', state.previewSrc);
-                            // Ensure volume and play state are synced
-                            const video = e.currentTarget;
-                            video.volume = state.volume / 100;
-                            if (state.isPlaying) {
-                              video.play().catch(err => console.error("Play failed:", err));
-                            }
-                          }}
-                        />
+                        {MEDIA_LIBRARY.filter(item => item.type === 'video').map(item => (
+                          <video
+                            key={item.src}
+                            ref={el => {
+                              videoRefsMap.current.set(item.src, el);
+                              // iOS Safari requires the muted HTML *attribute* for autoplay,
+                              // not just the muted DOM property that React sets.
+                              if (el) { el.setAttribute('muted', ''); el.muted = true; }
+                            }}
+                            src={item.src}
+                            className="absolute inset-0 w-full h-full"
+                            style={{
+                              display: state.previewSrc === item.src ? 'block' : 'none',
+                              objectFit: 'contain',
+                              transform: 'translateZ(0)',
+                              WebkitTransform: 'translateZ(0)'
+                            } as React.CSSProperties}
+                            playsInline
+                            preload="auto"
+                            loop={false}
+                            onTimeUpdate={(e) => {
+                              if (state.previewSrc === item.src) {
+                                dispatch({ type: 'SET_CURRENT_TIME', ms: e.currentTarget.currentTime * 1000 });
+                              }
+                            }}
+                            onEnded={() => {
+                              if (state.previewSrc === item.src) {
+                                dispatch({ type: 'VIDEO_ENDED' });
+                              }
+                            }}
+                            onError={(e) => { console.error('Video playback error:', e); }}
+                            onLoadedMetadata={(e) => {
+                              const video = e.currentTarget;
+                              video.volume = state.volume / 100;
+                              if (state.isPlaying && state.previewSrc === item.src) {
+                                video.play().catch(err => console.error("Play failed:", err));
+                              }
+                            }}
+                          />
+                        ))}
                       </div>
                     );
                   }
@@ -719,10 +727,8 @@ const VideoShowcase: React.FC<VideoShowcaseProps> = ({ isActive = false }) => {
               {state.isPlaying && isMuted && (
                 <button
                   onClick={() => {
-                    if (videoElementRef.current) {
-                      videoElementRef.current.muted = false;
-                      setIsMuted(false);
-                    }
+                    const activeVideo = videoRefsMap.current.get(state.previewSrc);
+                    if (activeVideo) { activeVideo.muted = false; setIsMuted(false); }
                   }}
                   className="absolute bottom-3 left-3 z-20 flex items-center gap-1.5 bg-black/70 backdrop-blur-sm text-white text-[10px] font-medium px-3 py-1.5 rounded-full hover:bg-black/90 transition-colors cursor-pointer"
                 >
@@ -759,10 +765,8 @@ const VideoShowcase: React.FC<VideoShowcaseProps> = ({ isActive = false }) => {
               <button
                 aria-label={state.isPlaying ? "Pause Video" : "Play Video"}
                 onClick={() => {
-                  if (videoElementRef.current) {
-                    videoElementRef.current.muted = false;
-                    setIsMuted(false);
-                  }
+                  const activeVideo = videoRefsMap.current.get(state.previewSrc);
+                  if (activeVideo) { activeVideo.muted = false; setIsMuted(false); }
                   dispatch({ type: 'TOGGLE_PLAY' });
                 }}
                 className="w-8 h-8 bg-[#4a7dff] rounded-full flex items-center justify-center hover:bg-[#3a6dee] transition-colors"
