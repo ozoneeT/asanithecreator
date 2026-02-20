@@ -1,8 +1,7 @@
 import React, { useState, useRef } from 'react';
-import ReactPlayer from 'react-player';
 import { PORTFOLIO_VIDEOS } from '../constants';
 import { motion } from 'framer-motion';
-import { ChevronLeft, Heart, MessageCircle, Share2, Music, Volume2, VolumeX } from 'lucide-react';
+import { ChevronLeft, Heart, MessageCircle, Share2, Music, Volume2, VolumeX, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const PortfolioPage: React.FC = () => {
@@ -51,31 +50,22 @@ const PortfolioPage: React.FC = () => {
                                 const standardUrl = url.includes('reviews') ? `https://vimeo.com/${videoId}` : url;
 
                                 return (
-                                    // @ts-ignore: ReactPlayer typings occasionally conflict with strict mode
-                                    <ReactPlayer
-                                        url={standardUrl}
-                                        playing={isActive}
-                                        loop={true}
-                                        muted={isMuted}
-                                        width="100%"
-                                        height="100%"
-                                        className="react-player-fullscreen scale-[1.05]" /* scale slightly to hide possible vimeo borders */
-                                        style={{ objectFit: 'cover', pointerEvents: 'none' }}
-                                        controls={false}
-                                        playsinline={true}
-                                        config={{
-                                            vimeo: {
-                                                playerOptions: {
-                                                    controls: 0,
-                                                    dnt: true,
-                                                    title: 0,
-                                                    byline: 0,
-                                                    portrait: 0,
-                                                    transparent: 0
-                                                }
-                                            } as any
-                                        }}
-                                    />
+                                    <div className="w-full h-full relative flex items-center justify-center bg-zinc-900 group">
+                                        {/* Loading Skeleton */}
+                                        <div className="absolute flex flex-col items-center justify-center gap-3 z-0 pointer-events-none">
+                                            <Loader2 className="w-8 h-8 text-white/50 animate-spin" />
+                                            <span className="text-white/50 text-sm font-medium">Loading HQ Video...</span>
+                                        </div>
+
+                                        <iframe
+                                            src={`https://player.vimeo.com/video/${videoId}?autoplay=${isActive ? 1 : 0}&loop=1&muted=${isMuted ? 1 : 0}&controls=0&dnt=1&title=0&byline=0&portrait=0`}
+                                            className="w-full h-full scale-[1.05] pointer-events-none relative z-10 transition-opacity duration-500 bg-transparent"
+                                            style={{ objectFit: 'cover' }}
+                                            allow="autoplay; fullscreen; picture-in-picture"
+                                            loading={index === 0 ? "eager" : "lazy"}
+                                            title="Portfolio Video"
+                                        />
+                                    </div>
                                 );
                             })()}
                         </div>
