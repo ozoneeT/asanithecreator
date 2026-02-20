@@ -81,15 +81,20 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ isActive = false }) =
                 }
             }
         });
-    }, [isActive, isPaused]);
+    }, [isActive, isPaused, activeIndex]);
 
     // Progress tracking is now handled by ReactPlayer's onProgress callback
     // No need for manual RAF-based updates
 
-    // Reset progress when changing videos
+    // Reset progress and video playhead when changing videos
     useEffect(() => {
         setProgress(0);
         progressRef.current = 0;
+
+        const video = videoRefs.current[activeIndex];
+        if (video) {
+            video.currentTime = 0;
+        }
     }, [activeIndex]);
 
     // ReactPlayer handles play/pause automatically via the playing prop
@@ -168,12 +173,12 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ isActive = false }) =
                                             src={service.videoSrc}
                                             className="w-full h-full object-contain"
                                             muted
-                                            loop
+                                            loop={!isActive}
                                             playsInline
                                             autoPlay
                                             style={{ pointerEvents: 'none' }}
                                             onTimeUpdate={(e) => {
-                                                if (isActive && index === activeIndex) {
+                                                if (isActive) {
                                                     const video = e.currentTarget;
                                                     const currentProgress = (video.currentTime / video.duration) * 100;
                                                     progressRef.current = currentProgress;
@@ -181,8 +186,7 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ isActive = false }) =
                                                 }
                                             }}
                                             onEnded={() => {
-                                                console.log(`Video ended: ${service.videoSrc}`);
-                                                if (isActive && index === activeIndex) {
+                                                if (isActive) {
                                                     progressRef.current = 0;
                                                     const nextIndex = (activeIndexRef.current + 1) % services.length;
                                                     activeIndexRef.current = nextIndex;
