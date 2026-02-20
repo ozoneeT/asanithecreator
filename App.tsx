@@ -4,22 +4,20 @@ import { AnimatePresence } from 'framer-motion';
 import Preloader from './components/Preloader';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
-import VideoShowcase from './components/VideoShowcase';
-import ServiceSection from './components/ServiceSection';
-import ServicesSection from './components/ServicesSection';
-import TestimonialsSection from './components/TestimonialsSection';
-import Footer from './components/Footer';
 import { USER_IMAGE, VIDEO_FOOTAGE, SECTIONS } from './constants';
 
+// Lazy load heavy sections to reduce initial bundle size
+const VideoShowcase = React.lazy(() => import('./components/VideoShowcase'));
+const ServiceSection = React.lazy(() => import('./components/ServiceSection'));
+const ServicesSection = React.lazy(() => import('./components/ServicesSection'));
+const TestimonialsSection = React.lazy(() => import('./components/TestimonialsSection'));
+const Footer = React.lazy(() => import('./components/Footer'));
 const SECTION_NAMES = ['Home', 'Work', 'About', 'Services', 'Capabilities', 'Testimonials', 'Contact'];
 const TOTAL_SECTIONS = 7;
-const SCROLL_COOLDOWN = 1200;
 
 const App: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [currentSection, setCurrentSection] = useState(0);
-  const isScrollingRef = useRef(false);
-  const touchStartRef = useRef(0);
 
   useEffect(() => {
     const imagesToPreload = [
@@ -46,66 +44,27 @@ const App: React.FC = () => {
     preloadImages();
   }, []);
 
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
   const scrollToSection = useCallback((index: number) => {
-    if (index < 0 || index >= TOTAL_SECTIONS || isScrollingRef.current) return;
-    isScrollingRef.current = true;
+    if (index < 0 || index >= TOTAL_SECTIONS) return;
     setCurrentSection(index);
-    setTimeout(() => { isScrollingRef.current = false; }, SCROLL_COOLDOWN);
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({
+        top: index * window.innerHeight,
+        behavior: 'smooth'
+      });
+    }
   }, []);
 
-  // Wheel handler — enforces one section at a time
-  useEffect(() => {
-    if (loading) return;
-    const handleWheel = (e: WheelEvent) => {
-      // Allow horizontal scrolling to pass through
-      if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
-      e.preventDefault();
-      if (isScrollingRef.current) return;
-      if (e.deltaY > 0) scrollToSection(currentSection + 1);
-      else if (e.deltaY < 0) scrollToSection(currentSection - 1);
-    };
-    window.addEventListener('wheel', handleWheel, { passive: false });
-    return () => window.removeEventListener('wheel', handleWheel);
-  }, [loading, currentSection, scrollToSection]);
-
-  // Touch handlers
-  useEffect(() => {
-    if (loading) return;
-    const handleTouchStart = (e: TouchEvent) => {
-      touchStartRef.current = e.touches[0].clientY;
-    };
-    const handleTouchEnd = (e: TouchEvent) => {
-      if (isScrollingRef.current) return;
-      const diff = touchStartRef.current - e.changedTouches[0].clientY;
-      if (Math.abs(diff) > 60) {
-        if (diff > 0) scrollToSection(currentSection + 1);
-        else scrollToSection(currentSection - 1);
-      }
-    };
-    window.addEventListener('touchstart', handleTouchStart, { passive: true });
-    window.addEventListener('touchend', handleTouchEnd, { passive: true });
-    return () => {
-      window.removeEventListener('touchstart', handleTouchStart);
-      window.removeEventListener('touchend', handleTouchEnd);
-    };
-  }, [loading, currentSection, scrollToSection]);
-
-  // Keyboard handler
-  useEffect(() => {
-    if (loading) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (isScrollingRef.current) return;
-      if (e.key === 'ArrowDown' || e.key === 'PageDown') {
-        e.preventDefault();
-        scrollToSection(currentSection + 1);
-      } else if (e.key === 'ArrowUp' || e.key === 'PageUp') {
-        e.preventDefault();
-        scrollToSection(currentSection - 1);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [loading, currentSection, scrollToSection]);
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const container = e.currentTarget;
+    // Calculate which section is currently most visible
+    const index = Math.round(container.scrollTop / window.innerHeight);
+    if (index >= 0 && index < TOTAL_SECTIONS && currentSection !== index) {
+      setCurrentSection(index);
+    }
+  }, [currentSection]);
 
   // Nav section mapping
   const navSectionMap: Record<string, number> = {
@@ -137,27 +96,43 @@ const App: React.FC = () => {
 
           {/* Scroll Container */}
           <div
-            style={{
-              transform: `translateY(calc(-${currentSection} * var(--section-height)))`,
-              transition: 'transform 1s cubic-bezier(0.76, 0, 0.24, 1)',
-            }}
+            ref={scrollContainerRef}
+            onScroll={handleScroll}
+            className="h-screen w-full overflow-y-auto overflow-x-hidden snap-y snap-mandatory scroll-smooth relative"
           >
-            <Hero onNavigate={(index: number) => scrollToSection(index)} />
-            <VideoShowcase isActive={currentSection === 1} />
+            <div className="snap-start shrink-0 h-screen w-full">
+              <Hero onNavigate={(index: number) => scrollToSection(index)} />
+            </div>
 
-            {/* About Section */}
-            <ServiceSection key={SECTIONS[0].id} section={SECTIONS[0]} index={0} />
+            <React.Suspense fallback={<div className="h-screen w-full bg-[#0a0a0a] flex items-center justify-center">Loading...</div>}>
+              <div className="snap-start shrink-0 h-screen w-full">
+                <VideoShowcase isActive={currentSection === 1} />
+              </div>
 
-            {/* Services Section */}
-            <ServicesSection isActive={currentSection === 3} />
+              {/* About Section */}
+              <div className="snap-start shrink-0 h-screen w-full">
+                <ServiceSection key={SECTIONS[0].id} section={SECTIONS[0]} index={0} />
+              </div>
 
-            {/* Capabilities Section - Visual Storytelling */}
-            <ServiceSection key={SECTIONS[1].id} section={SECTIONS[1]} index={1} />
+              {/* Services Section */}
+              <div className="snap-start shrink-0 h-screen w-full">
+                <ServicesSection isActive={currentSection === 3} />
+              </div>
 
-            {/* Testimonials Section (Replaces Brand Identity) */}
-            <TestimonialsSection />
+              {/* Capabilities Section - Visual Storytelling */}
+              <div className="snap-start shrink-0 h-screen w-full">
+                <ServiceSection key={SECTIONS[1].id} section={SECTIONS[1]} index={1} />
+              </div>
 
-            <Footer />
+              {/* Testimonials Section (Replaces Brand Identity) */}
+              <div className="snap-start shrink-0 h-screen w-full">
+                <TestimonialsSection />
+              </div>
+
+              <div className="snap-start shrink-0 h-screen w-full">
+                <Footer />
+              </div>
+            </React.Suspense>
           </div>
 
           {/* Section Indicator Dots */}

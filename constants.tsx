@@ -13,7 +13,7 @@ export const VIDEO_FOOTAGE = [
   "https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?q=80&w=1000&auto=format&fit=crop",
 ];
 
-import AboutImage from './AboutImage.PNG';
+import AboutImage from './AboutImage.webp';
 
 export const SECTIONS: SectionContent[] = [
   {

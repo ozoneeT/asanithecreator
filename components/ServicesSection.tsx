@@ -58,24 +58,14 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ isActive = false }) =
     const activeIndexRef = useRef(0);
     const progressRef = useRef(0);
     const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
-    const bgVideoRefs = useRef<(HTMLVideoElement | null)[]>([]);
 
     useEffect(() => {
         // Control main videos
-        videoRefs.current.forEach((video) => {
+        videoRefs.current.forEach((video, index) => {
             if (video) {
-                if (isActive && !isPaused) {
+                // Play ONLY if this entire section is active, the video is the active card, and it's not paused by touch
+                if (isActive && !isPaused && index === activeIndex) {
                     video.play().catch(e => console.log("Auto-play prevented:", e));
-                } else {
-                    video.pause();
-                }
-            }
-        });
-        // Control background videos
-        bgVideoRefs.current.forEach((video) => {
-            if (video) {
-                if (isActive && !isPaused) {
-                    video.play().catch(e => console.log("Bg Auto-play prevented:", e));
                 } else {
                     video.pause();
                 }
@@ -101,10 +91,32 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ isActive = false }) =
 
     // Manual change handler
     const handleManualChange = (index: number) => {
+        if (index === activeIndexRef.current) return; // Ignore if already active
+
+        // Pause current video
+        const currentVideo = videoRefs.current[activeIndexRef.current];
+        if (currentVideo) {
+            currentVideo.pause();
+        }
+
         activeIndexRef.current = index;
         progressRef.current = 0;
         setActiveIndex(index);
         setProgress(0);
+
+        // Play new video from start
+        const newVideo = videoRefs.current[index];
+        if (newVideo) {
+            newVideo.load(); // Required since we set preload="none" on inactive videos
+            newVideo.currentTime = 0;
+            // Introduce a tiny delay so the browser can fetch the video headers before playing
+            setTimeout(() => {
+                const playPromise = newVideo.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch(e => console.log("Play interrupted or not ready", e));
+                }
+            }, 50);
+        }
     };
 
     return (
@@ -138,59 +150,78 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ isActive = false }) =
                                     if (!isActive) handleManualChange(index);
                                 }}
                                 onMouseLeave={() => setIsPaused(false)}
-                                onTouchStart={() => setIsPaused(true)}
+                                onTouchStart={(e) => {
+                                    // Only pause if they actually tapped the active card.
+                                    // Prevent pausing if they are simply swiping across the screen.
+                                    if (isActive) {
+                                        setIsPaused(true);
+                                    } else {
+                                        handleManualChange(index);
+                                    }
+                                }}
                                 onTouchEnd={() => setIsPaused(false)}
-                                className={`relative rounded-2xl overflow-hidden cursor-pointer transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]
+                                onTouchCancel={() => setIsPaused(false)}
+                                className={`relative rounded-2xl overflow-hidden cursor-pointer select-none transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]
                   ${isActive ? 'flex-[4] sm:flex-[3] md:flex-[4]' : 'flex-[0.5] sm:flex-1 hover:flex-[1.2]'}
                   ${isActive ? 'grayscale-0' : 'grayscale hover:grayscale-0'}
                 `}
                             >
                                 {/* Background Media — two layers: blurry fill + clear video */}
                                 <div className="absolute inset-0 bg-[#1a1a1a] overflow-hidden">
-                                    {/* Layer 1: Blurry scaled video fills entire card */}
-                                    <div
-                                        className={`absolute inset-[-40%] transition-opacity duration-700 ${isActive ? 'opacity-50' : 'opacity-20'}`}
-                                        style={{ filter: 'blur(20px)' }}
-                                    >
-                                        {/* @ts-ignore - ReactPlayer types have issues */}
-                                        <video
-                                            ref={el => { bgVideoRefs.current[index] = el; }}
-                                            src={service.videoSrc}
-                                            className="w-full h-full object-cover"
-                                            autoPlay
-                                            muted
-                                            loop
-                                            playsInline
-                                            style={{ pointerEvents: 'none' }}
+                                    {/* Layer 1: Blurry moving gradient background */}
+                                    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                                        <motion.div
+                                            animate={isActive ? {
+                                                scale: [1, 1.2, 1],
+                                                rotate: [0, 90, 0]
+                                            } : {
+                                                scale: 1,
+                                                rotate: 0
+                                            }}
+                                            transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+                                            className={`absolute inset-[-50%] transition-opacity duration-700 ${isActive ? 'opacity-80' : 'opacity-30'}`}
+                                            style={{
+                                                background: 'radial-gradient(circle at 50% 50%, rgba(191,255,0,0.15) 0%, rgba(112,0,255,0.15) 50%, transparent 100%)',
+                                                filter: 'blur(40px)'
+                                            }}
                                         />
                                     </div>
 
                                     {/* Layer 2: Clear video (centered, normal aspect ratio) */}
-                                    <div className={`absolute inset-0 transition-opacity duration-700 ${isActive ? 'opacity-70' : 'opacity-30'}`}>
-                                        {/* @ts-ignore - ReactPlayer types have issues */}
+                                    <div className={`absolute inset-0 transition-opacity duration-700 ${isActive ? 'opacity-70 z-10' : 'opacity-30 z-0'}`}>
                                         <video
                                             ref={el => { videoRefs.current[index] = el; }}
                                             src={service.videoSrc}
-                                            className="w-full h-full object-contain"
+                                            className="w-full h-full object-contain object-center"
                                             muted
-                                            loop={!isActive}
+                                            loop={false} // NEVER loop. We want onEnded to fire so we can advance to the next card.
                                             playsInline
-                                            autoPlay
+                                            preload={isActive ? "auto" : "none"} // Prevent loading all 4 HD videos into mobile RAM at once
+                                            autoPlay={isActive} // Auto play ONLY if active
                                             style={{ pointerEvents: 'none' }}
+                                            onCanPlay={(e) => {
+                                                e.currentTarget.playbackRate = 0.5;
+                                            }}
                                             onTimeUpdate={(e) => {
-                                                if (isActive) {
+                                                if (isActive && !isPaused) {
                                                     const video = e.currentTarget;
                                                     const currentProgress = (video.currentTime / video.duration) * 100;
+
+                                                    // Throttle React state updates to avoid render thrashing, but keep ref precise
                                                     progressRef.current = currentProgress;
-                                                    setProgress(currentProgress);
+                                                    if (Math.abs(currentProgress - progress) > 0.5 || currentProgress === 100) {
+                                                        setProgress(currentProgress);
+                                                    }
                                                 }
                                             }}
                                             onEnded={() => {
                                                 if (isActive) {
+                                                    // Move to next slide
                                                     progressRef.current = 0;
+                                                    setProgress(0);
+
                                                     const nextIndex = (activeIndexRef.current + 1) % services.length;
-                                                    activeIndexRef.current = nextIndex;
-                                                    setActiveIndex(nextIndex);
+                                                    handleManualChange(nextIndex);
                                                 }
                                             }}
                                         />
@@ -205,7 +236,8 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ isActive = false }) =
                                     <div className="absolute top-0 left-0 w-full h-1 bg-white/10 z-20">
                                         <motion.div
                                             className="h-full bg-[#bfff00]"
-                                            style={{ width: `${progress}%` }}
+                                            animate={{ width: `${progress}%` }}
+                                            transition={{ duration: 0.2, ease: "linear" }}
                                         />
                                     </div>
                                 )}

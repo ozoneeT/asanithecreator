@@ -591,8 +591,8 @@ const VideoShowcase: React.FC<VideoShowcaseProps> = ({ isActive = false }) => {
           {/* Player Header */}
           <div className="flex-shrink-0 flex items-center justify-between px-4 h-[32px] border-b border-[#2a2a4a]">
             <span className="text-[11px] text-[#8888aa] font-medium">Player</span>
-            <button onClick={toggleFullscreen} className="hover:text-white text-[#555570] transition-colors">
-              <Maximize size={13} />
+            <button aria-label="Toggle Fullscreen" onClick={toggleFullscreen} className="hover:text-white text-[#555570] transition-colors">
+              <Maximize size={13} aria-hidden="true" />
             </button>
           </div>
 
@@ -750,12 +750,14 @@ const VideoShowcase: React.FC<VideoShowcaseProps> = ({ isActive = false }) => {
 
             <div className="flex items-center gap-4">
               <button
+                aria-label="Skip Backward 5 Seconds"
                 onClick={() => dispatch({ type: 'MOVE_PLAYHEAD', ms: Math.max(0, state.playheadMs - 5000) })}
                 className="text-[#8888aa] hover:text-white transition-colors"
               >
-                <SkipBack size={16} />
+                <SkipBack size={16} aria-hidden="true" />
               </button>
               <button
+                aria-label={state.isPlaying ? "Pause Video" : "Play Video"}
                 onClick={() => {
                   if (videoElementRef.current) {
                     videoElementRef.current.muted = false;
@@ -765,20 +767,22 @@ const VideoShowcase: React.FC<VideoShowcaseProps> = ({ isActive = false }) => {
                 }}
                 className="w-8 h-8 bg-[#4a7dff] rounded-full flex items-center justify-center hover:bg-[#3a6dee] transition-colors"
               >
-                {state.isPlaying ? <Pause size={14} fill="white" className="text-white" /> : <Play size={14} fill="white" className="text-white ml-0.5" />}
+                {state.isPlaying ? <Pause size={14} fill="white" className="text-white" aria-hidden="true" /> : <Play size={14} fill="white" className="text-white ml-0.5" aria-hidden="true" />}
               </button>
               <button
+                aria-label="Skip Forward 5 Seconds"
                 onClick={() => dispatch({ type: 'MOVE_PLAYHEAD', ms: Math.min(state.totalDurationMs, state.playheadMs + 5000) })}
                 className="text-[#8888aa] hover:text-white transition-colors"
               >
-                <SkipForward size={16} />
+                <SkipForward size={16} aria-hidden="true" />
               </button>
             </div>
 
             <div className="hidden sm:flex items-center gap-2">
-              <Volume2 size={13} className="text-[#555570]" />
+              <Volume2 size={13} className="text-[#555570]" aria-hidden="true" />
               <input
                 type="range"
+                aria-label="Volume Slider"
                 min="0"
                 max="100"
                 value={state.volume}
@@ -935,11 +939,12 @@ const VideoShowcase: React.FC<VideoShowcaseProps> = ({ isActive = false }) => {
             ].map(({ Icon, label }) => (
               <button
                 key={label}
+                aria-label={label}
                 onClick={label === 'Delete' && state.selectedClipId ? () => dispatch({ type: 'REMOVE_CLIP', clipId: state.selectedClipId! }) : undefined}
                 className="p-1.5 text-[#8888aa] hover:text-white hover:bg-[#252540] rounded transition-colors"
                 title={label}
               >
-                <Icon size={14} />
+                <Icon size={14} aria-hidden="true" />
               </button>
             ))}
           </div>

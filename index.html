@@ -13,7 +13,28 @@
   <meta name="keywords"
     content="mobile videography, content creator, videographer, brand campaigns, social media content, event coverage, ASANI" />
   <meta name="author" content="ASANI THE CREATOR" />
+  <link rel="canonical" href="https://asanithecreator.com/" />
 
+  <!-- Resource Hints for Performance -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preconnect" href="https://vimeo.com" />
+  <link rel="preconnect" href="https://player.vimeo.com" />
+
+  <!-- Structured Data / JSON-LD -->
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Person",
+      "name": "Asani The Creator",
+      "jobTitle": "Mobile Videographer & Content Creator",
+      "url": "https://asanithecreator.com/",
+      "sameAs": [
+        "https://instagram.com/asanithecreator"
+      ],
+      "description": "Passionate mobile videographer and content creator specializing in turning ideas into visually compelling stories. From brand campaigns to event coverage."
+    }
+  </script>
   <!-- Favicon -->
   <link rel="icon" type="image/svg+xml" href="/logo.svg" />
 
@@ -36,7 +57,12 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link
     href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Inter:wght@300;400;500;600&display=swap"
-    rel="stylesheet">
+    rel="stylesheet" media="print" onload="this.media='all'">
+  <noscript>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Inter:wght@300;400;500;600&display=swap"
+      rel="stylesheet" />
+  </noscript>
   <style>
     html,
     body {
@@ -97,6 +123,9 @@
       z-index: 9999;
       pointer-events: none;
       background-image: url("https://grainy-gradients.vercel.app/noise.svg");
+      will-change: transform;
+      transform: translateZ(0);
+      backface-visibility: hidden;
     }
 
     /* Detailed Custom Cursor - Zero Lag Native Implementation */

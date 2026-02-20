@@ -35,7 +35,7 @@ const ServiceSection: React.FC<Props> = ({ section, index }) => {
               {section.description}
             </p>
             <button className="group relative inline-flex items-center gap-4 md:gap-6 text-[11px] md:text-[10px] uppercase tracking-[0.2em] md:tracking-[0.4em] font-bold text-white transition-all min-h-[44px]">
-              <span className="relative z-10">Discover More</span>
+              <span className="relative z-10"> </span>
               <span className="w-10 h-[1px] bg-white group-hover:w-20 transition-all duration-300" />
             </button>
           </motion.div>

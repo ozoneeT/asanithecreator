@@ -153,15 +153,18 @@ const Hero: React.FC<HeroProps> = ({ onNavigate }) => {
             className="relative z-10 w-full max-w-[85vw] sm:max-w-[400px] md:max-w-[500px] lg:max-w-[600px] flex justify-center items-end"
           >
             {/* ARCH Background Shape */}
-            <div className="absolute bottom-0 w-full h-[75%] bg-gradient-to-b from-white/5 to-transparent border-t border-x border-white/10 rounded-t-[50%] backdrop-blur-sm z-0">
+            <div className="absolute bottom-0 w-full h-[75%] bg-gradient-to-b from-white/5 to-transparent border-t border-x border-white/10 rounded-t-[50%] z-0" style={{ willChange: 'transform', WebkitTransform: 'translateZ(0)' }}>
               {/* Inner Glow */}
-              <div className="absolute inset-0 bg-[#7000FF]/5 rounded-t-[50%] blur-xl" />
+              <div className="absolute inset-0 bg-[#7000FF]/5 rounded-t-[50%] blur-xl" style={{ willChange: 'transform' }} />
             </div>
 
             {/* Character Image */}
             <img
               src={USER_IMAGE}
               alt="Asani The Creator"
+              width={600}
+              height={800}
+              fetchPriority="high"
               className="relative z-10 w-full h-auto object-contain drop-shadow-2xl"
               style={{ maskImage: 'linear-gradient(to bottom, black 90%, transparent 100%)' }}
             />
