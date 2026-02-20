@@ -44,27 +44,189 @@ export const SECTIONS: SectionContent[] = [
 
 export const TESTIMONIALS: Testimonial[] = [
   {
-    id: '1',
-    name: 'Sarah Jenkins',
-    role: 'CEO, Lux Media',
-    message: 'Asani completely transformed our brand aesthetics. The growth has been exponential.',
+    id: 'p1',
+    name: 'ADELOVE25',
+    role: 'Client',
+    message: 'Asani! The wedding shoot came out absolutely stunning. We love them! I will definitely love to work with you again for our anniversary.',
     type: 'testimonial',
-    time: '2m ago'
+    time: '10:42 AM',
+    isOutgoing: false
   },
   {
-    id: '2',
-    name: 'New Booking Request',
-    role: 'Inquiry',
-    message: 'A luxury fashion brand wants to collaborate for their Spring 2025 campaign.',
-    type: 'booking',
-    time: '5m ago'
+    id: 'p1-reply',
+    name: 'Asani',
+    role: 'Creator',
+    message: 'Thank you so much! It was a beautiful ceremony to capture. Looking forward to the next one!',
+    type: 'testimonial',
+    time: '10:45 AM',
+    isOutgoing: true
   },
   {
-    id: '3',
-    name: 'Marcus Thorne',
-    role: 'Creative Director',
-    message: 'Working with Asani is seamless. The attention to detail is truly world-class.',
+    id: 'p2',
+    name: 'Favour',
+    role: 'Client',
+    message: 'The edits you did for my video are perfect! The transitions are so clean. I will love to work with you again on my next project.',
     type: 'testimonial',
-    time: '15m ago'
+    time: 'Yesterday',
+    isOutgoing: false
+  },
+  {
+    id: 'p2-reply',
+    name: 'Asani',
+    role: 'Creator',
+    message: 'I\'m so glad to hear that Favour! Let\'s keep the momentum going.',
+    type: 'testimonial',
+    time: 'Yesterday',
+    isOutgoing: true
+  },
+  {
+    id: 'p3',
+    name: 'Tobi',
+    role: 'Client',
+    message: 'Sis, the birthday photoshoot was a movie! Everyone is asking who shot them. I\'ll definitely love to work with you again next year.',
+    type: 'testimonial',
+    time: 'Yesterday',
+    isOutgoing: false
+  },
+  {
+    id: 'p3-reply',
+    name: 'Asani',
+    role: 'Creator',
+    message: 'Let\'s gooo! It was a great vibe Tobi. We just getting started.',
+    type: 'testimonial',
+    time: 'Yesterday',
+    isOutgoing: true
+  },
+  {
+    id: 'p4',
+    name: 'Analee Craftiee',
+    role: 'Brand Owner',
+    message: 'Asani, our brand video is doing very well on social media! Customers are coming in to buy everything we showed. I will absolutely love to work with you again.',
+    type: 'testimonial',
+    time: 'Monday',
+    isOutgoing: false
+  },
+  {
+    id: 'p4-reply',
+    name: 'Asani',
+    role: 'Creator',
+    message: 'That is incredible news! Your products are beautiful, making them easy to sell visually. Let\'s plan the next drop.',
+    type: 'testimonial',
+    time: 'Monday',
+    isOutgoing: true
+  },
+  {
+    id: 'p5',
+    name: 'Esther',
+    role: 'Client',
+    message: 'Omg Asani... our pre-wedding photoshoot video just hit 16k likes on TikTok! You are amazing. Will definitely love to work with you again.',
+    type: 'testimonial',
+    time: 'Sunday',
+    isOutgoing: false
+  },
+  {
+    id: 'p5-reply',
+    name: 'Asani',
+    role: 'Creator',
+    message: 'Wow 16k?! That is huge Esther, congratulations! Let me know when you need me next.',
+    type: 'testimonial',
+    time: 'Sunday',
+    isOutgoing: true
+  },
+  {
+    id: 'p6',
+    name: 'Caleb',
+    role: 'Collaborator',
+    message: 'The collaboration work we did together was top tier. The final cut is insane. I will definitely love to work with you again sis.',
+    type: 'testimonial',
+    time: 'Sunday',
+    isOutgoing: false
+  },
+  {
+    id: 'p6-reply',
+    name: 'Asani',
+    role: 'Creator',
+    message: 'Appreciate it Caleb! The synergy was perfect. Let\'s do it again soon.',
+    type: 'testimonial',
+    time: 'Sunday',
+    isOutgoing: true
+  },
+  {
+    id: 'p7',
+    name: 'Sarah',
+    role: 'Client',
+    message: 'Asani, thank you so much for the amazing travel reel. The pacing is incredibly captivating. I would love to work with you again when I\'m back in town!',
+    type: 'testimonial',
+    time: 'Last Week',
+    isOutgoing: false
+  },
+  {
+    id: 'p7-reply',
+    name: 'Asani',
+    role: 'Creator',
+    message: 'Thank you Sarah! It was great showing you around the city. Safe travels!',
+    type: 'testimonial',
+    time: 'Last Week',
+    isOutgoing: true
+  },
+  {
+    id: 'p8',
+    name: 'Michael',
+    role: 'Client',
+    message: 'The fitness promo video is getting so much traction. Really appreciate your eye for detail. Will definitely work with you again for the next launch.',
+    type: 'testimonial',
+    time: 'Last Month',
+    isOutgoing: false
+  },
+  {
+    id: 'p8-reply',
+    name: 'Asani',
+    role: 'Creator',
+    message: 'Appreciate that Michael! Your work ethic made the footage look powerful. Let\'s keep the momentum going!',
+    type: 'testimonial',
+    time: 'Last Month',
+    isOutgoing: true
+  },
+  {
+    id: 'p9',
+    name: 'Lumiere Studio',
+    role: 'Production',
+    message: 'Thank you for jumping in on such short notice. The BTS footage is perfect. Looking forward to working with you again!',
+    type: 'testimonial',
+    time: 'Last Month',
+    isOutgoing: false
+  },
+  {
+    id: 'p9-reply',
+    name: 'Asani',
+    role: 'Creator',
+    message: 'Anytime! It was a great set to be on. Let me know when you need me next.',
+    type: 'testimonial',
+    time: 'Last Month',
+    isOutgoing: true
   }
+];
+
+export const PORTFOLIO_VIDEOS = [
+  "https://vimeo.com/reviews/62c16a46-08f6-4b14-ae48-0fcc17399c52/videos/1163715974",
+  "https://vimeo.com/reviews/62c16a46-08f6-4b14-ae48-0fcc17399c52/videos/1163715968",
+  "https://vimeo.com/reviews/62c16a46-08f6-4b14-ae48-0fcc17399c52/videos/1163715925",
+  "https://vimeo.com/reviews/62c16a46-08f6-4b14-ae48-0fcc17399c52/videos/1163715942",
+  "https://vimeo.com/reviews/62c16a46-08f6-4b14-ae48-0fcc17399c52/videos/1163715969",
+  "https://vimeo.com/reviews/62c16a46-08f6-4b14-ae48-0fcc17399c52/videos/1163715981",
+  "https://vimeo.com/reviews/62c16a46-08f6-4b14-ae48-0fcc17399c52/videos/1163715971",
+  "https://vimeo.com/reviews/62c16a46-08f6-4b14-ae48-0fcc17399c52/videos/1163715972",
+  "https://vimeo.com/reviews/62c16a46-08f6-4b14-ae48-0fcc17399c52/videos/1163715953",
+  "https://vimeo.com/reviews/62c16a46-08f6-4b14-ae48-0fcc17399c52/videos/1163715941",
+  "https://vimeo.com/reviews/62c16a46-08f6-4b14-ae48-0fcc17399c52/videos/1163715959",
+  "https://vimeo.com/reviews/62c16a46-08f6-4b14-ae48-0fcc17399c52/videos/1163715939",
+  "https://vimeo.com/reviews/62c16a46-08f6-4b14-ae48-0fcc17399c52/videos/1163715940",
+  "https://vimeo.com/reviews/62c16a46-08f6-4b14-ae48-0fcc17399c52/videos/1163715958",
+  "https://vimeo.com/reviews/62c16a46-08f6-4b14-ae48-0fcc17399c52/videos/1163715960",
+  "https://vimeo.com/reviews/62c16a46-08f6-4b14-ae48-0fcc17399c52/videos/1163715973",
+  "https://vimeo.com/reviews/62c16a46-08f6-4b14-ae48-0fcc17399c52/videos/1163715956",
+  "https://vimeo.com/reviews/62c16a46-08f6-4b14-ae48-0fcc17399c52/videos/1163715935",
+  "https://vimeo.com/reviews/62c16a46-08f6-4b14-ae48-0fcc17399c52/videos/1163715938",
+  "https://vimeo.com/reviews/62c16a46-08f6-4b14-ae48-0fcc17399c52/videos/1163715957",
+  "https://vimeo.com/reviews/62c16a46-08f6-4b14-ae48-0fcc17399c52/videos/1114452062"
 ];

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowUpRight, ArrowDown, Star, Quote } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { TESTIMONIALS, USER_IMAGE } from '../constants';
 
 interface HeroProps {
@@ -11,6 +12,7 @@ const testimonials = TESTIMONIALS.filter(t => t.type === 'testimonial');
 
 const Hero: React.FC<HeroProps> = ({ onNavigate }) => {
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -33,16 +35,16 @@ const Hero: React.FC<HeroProps> = ({ onNavigate }) => {
       </div>
 
       {/* --- TOP SECTION: Header & Title --- */}
-      <div className="relative top-10 z-20 flex flex-col items-center text-center mb-4 md:mb-8 w-full px-4 sm:px-6 mt-16 sm:mt-28 md:mt-48">
+      <div className="relative z-20 flex flex-col items-center text-center w-full px-4 sm:px-6 mt-20 sm:mt-28 md:mt-48 flex-shrink-0">
         {/* Hello Bubble */}
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.6 }}
-          className="relative mb-2"
+          className="relative mb-2 sm:mb-4"
         >
-          <div className="bg-transparent text-black px-6 py-2 rounded-full border border-gray-200 shadow-sm relative z-10">
-            <span className="text-sm text-white font-medium tracking-wide">
+          <div className="bg-transparent text-black px-4 sm:px-6 py-1.5 sm:py-2 rounded-full border border-gray-200 shadow-sm relative z-10">
+            <span className="text-xs sm:text-sm text-white font-medium tracking-wide">
               Hello! <span className="inline-block animate-wave">👋</span>
             </span>
           </div>
@@ -53,21 +55,21 @@ const Hero: React.FC<HeroProps> = ({ onNavigate }) => {
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.7 }}
-          className="text-5xl md:text-7xl lg:text-8xl font-light tracking-tight text-white/90 leading-[1.1]"
+          className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-light tracking-tight text-white/90 leading-[1.1] sm:leading-[1.1]"
         >
           I'm <span className="font-serif italic text-white">Asani</span>, <br />
           <span className="font-semibold">The Creator</span>
         </motion.h1>
 
-        {/* Mobile-only cycling testimonial */}
+        {/* Mobile-only cycling testimonial (Restored to center) */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 1.0 }}
-          className="md:hidden mt-4 max-w-[280px] text-center"
+          className="md:hidden mt-6 xs:mt-8 max-w-[280px] text-center z-30 pointer-events-none"
         >
           <div className="flex gap-0.5 justify-center mb-2">
-            {[1, 2, 3, 4, 5].map(i => (
+            {[1, 2, 3, 4, 5].map((i) => (
               <Star key={i} className="w-3 h-3 text-[#F59E0B] fill-[#F59E0B]" />
             ))}
           </div>
@@ -80,10 +82,10 @@ const Hero: React.FC<HeroProps> = ({ onNavigate }) => {
                 exit={{ opacity: 0, y: -6 }}
                 transition={{ duration: 0.3 }}
               >
-                <p className="text-xs text-white/50 leading-relaxed">
-                  "{testimonials[currentTestimonial].message}"
+                <p className="text-xs text-white/50 leading-relaxed italic px-2">
+                  "{testimonials[currentTestimonial].message.length > 60 ? testimonials[currentTestimonial].message.substring(0, 60) + '...' : testimonials[currentTestimonial].message}"
                 </p>
-                <p className="text-[11px] text-white/30 mt-1.5 font-bold uppercase tracking-wider">
+                <p className="text-[10px] text-[#bfff00]/70 mt-2 font-bold uppercase tracking-wider truncate">
                   {testimonials[currentTestimonial].name}
                 </p>
               </motion.div>
@@ -177,7 +179,7 @@ const Hero: React.FC<HeroProps> = ({ onNavigate }) => {
               className="absolute bottom-8 md:bottom-12 z-40 flex items-center gap-2 sm:gap-4 bg-white/5 backdrop-blur-md border border-white/10 p-1.5 sm:p-2 rounded-full pl-4 sm:pl-6 pr-1.5 sm:pr-2 shadow-2xl"
             >
               <button
-                onClick={() => onNavigate?.(1)}
+                onClick={() => navigate('/portfolio')}
                 className="text-white text-sm font-medium tracking-wide hover:text-[#7000FF] transition-colors pr-4"
               >
                 Portfolio <ArrowUpRight className="inline w-4 h-4 ml-1" />

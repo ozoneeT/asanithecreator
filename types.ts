@@ -6,6 +6,7 @@ export interface Testimonial {
   message: string;
   type: 'testimonial' | 'booking';
   time: string;
+  isOutgoing?: boolean;
 }
 
 export interface SectionContent {
