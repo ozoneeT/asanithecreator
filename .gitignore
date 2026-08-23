@@ -22,3 +22,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Original camera masters (kept out of git — optimized copies live in public/)
+media-source
+
+# Local env / secrets
+.env
+.env.local
+.env*.local

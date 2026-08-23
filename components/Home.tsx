@@ -92,7 +92,7 @@ const Home: React.FC = () => {
         <div
           className="relative h-screen overflow-hidden bg-[#0a0a0a]"
         >
-          <Navbar onNavigate={handleNavClick} currentSection={currentSection} />
+          <Navbar onNavigate={handleNavClick} />
 
           {/* Scroll Container */}
           <div
@@ -131,9 +131,8 @@ const Home: React.FC = () => {
           </div>
 
           {/* Section Indicator Dots */}
-          <div className={`fixed z-40 flex transition-opacity duration-500 ${currentSection === 1 ? 'opacity-0 pointer-events-none' : 'opacity-100'}
-            bottom-4 left-1/2 -translate-x-1/2 flex-row gap-2
-            md:bottom-auto md:left-auto md:translate-x-0 md:right-10 md:top-1/2 md:-translate-y-1/2 md:flex-col md:items-end md:gap-4`}>
+          <div className="fixed z-40 flex bottom-4 left-1/2 -translate-x-1/2 flex-row gap-2
+            md:bottom-auto md:left-auto md:translate-x-0 md:right-10 md:top-1/2 md:-translate-y-1/2 md:flex-col md:items-end md:gap-4">
             {SECTION_NAMES.map((name, i) => (
               <button
                 key={i}

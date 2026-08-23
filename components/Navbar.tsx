@@ -6,10 +6,9 @@ import { X } from 'lucide-react';
 
 interface NavbarProps {
   onNavigate?: (section: string) => void;
-  currentSection?: number;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentSection }) => {
+const Navbar: React.FC<NavbarProps> = ({ onNavigate }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   const navItems = ['Work', 'About', 'Services', 'Testimonials', 'Contact'];
@@ -29,7 +28,7 @@ const Navbar: React.FC<NavbarProps> = ({ onNavigate, currentSection }) => {
       >
         <button
           onClick={() => onNavigate?.('home')}
-          className={`flex flex-col leading-none group transition-opacity duration-500 w-auto ${currentSection === 1 ? 'opacity-0 pointer-events-none' : 'opacity-100 pointer-events-auto'}`}
+          className="flex flex-col leading-none group transition-opacity duration-500 w-auto pointer-events-auto"
         >
           <span className="text-xl md:text-2xl font-bold serif tracking-tight">ASANI</span>
           <span className="text-[11px] md:text-[10px] uppercase tracking-[0.2em] opacity-70 group-hover:text-[#bfff00] transition-colors">the_creator</span>

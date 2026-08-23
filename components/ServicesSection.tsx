@@ -1,13 +1,40 @@
 
-import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Camera, Film, MonitorPlay, Zap, ArrowUpRight } from 'lucide-react';
-import ReactPlayer from 'react-player';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
+import { Camera, Film, MonitorPlay, Zap, ArrowUpRight, Volume2, VolumeX } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
-const ReactPlayerFixed = ReactPlayer as unknown as React.ComponentType<any>;
+// How long each card holds the stage. The clips are different lengths, so the
+// carousel runs on its own clock instead of waiting for `ended` — that also means
+// a video that fails to load can never stall the rotation.
+const SLIDE_MS = 8000;
 
+// Sound eases in rather than snapping to full volume — sweeping the pointer
+// across the row would otherwise fire a burst of audio pops.
+// Deliberately on a timer rather than requestAnimationFrame: rAF is frozen in a
+// backgrounded or occluded window, which would strand the video unmuted at volume
+// zero — audible in name only.
+const FADE_MS = 350;
+const FADE_STEP_MS = 25;
+const fades = new WeakMap<HTMLVideoElement, ReturnType<typeof setInterval>>();
 
-// Services with local video files
+const cancelFade = (video: HTMLVideoElement) => {
+    const running = fades.get(video);
+    if (running !== undefined) { clearInterval(running); fades.delete(video); }
+};
+
+const fadeIn = (video: HTMLVideoElement) => {
+    cancelFade(video);
+    const from = video.volume;
+    const start = Date.now();
+    const id = setInterval(() => {
+        const t = Math.min(1, (Date.now() - start) / FADE_MS);
+        video.volume = from + (1 - from) * t;
+        if (t >= 1) cancelFade(video);
+    }, FADE_STEP_MS);
+    fades.set(video, id);
+};
+
 const services = [
     {
         id: 'brand-business',
@@ -15,7 +42,8 @@ const services = [
         shortTitle: 'Business',
         description: 'Elevate your corporate identity with high-end production that communicates your value proposition effectively.',
         icon: Camera,
-        videoSrc: '/BrandAndBusiness.MP4'
+        videoSrc: '/BrandAndBusiness.MP4',
+        poster: '/posters/service-BrandAndBusiness.jpg',
     },
     {
         id: 'lifestyle-personal',
@@ -23,7 +51,8 @@ const services = [
         shortTitle: 'Lifestyle',
         description: 'Authentic storytelling that connects deeply with your audience, showcasing the human side of your brand.',
         icon: MonitorPlay,
-        videoSrc: '/Lifestyle.MP4'
+        videoSrc: '/Lifestyle.MP4',
+        poster: '/posters/service-Lifestyle.jpg',
     },
     {
         id: 'event-coverage',
@@ -31,7 +60,8 @@ const services = [
         shortTitle: 'Events',
         description: 'Capture the energy and key moments of your events with cinematic flair, perfect for recaps and promotion.',
         icon: Film,
-        videoSrc: '/Events.MP4'
+        videoSrc: '/Events.MP4',
+        poster: '/posters/service-Events.jpg',
     },
     {
         id: 'social-media',
@@ -39,8 +69,9 @@ const services = [
         shortTitle: 'Social',
         description: 'Engaging, trend-aware content designed to stop the scroll and drive engagement across all platforms.',
         icon: Zap,
-        videoSrc: '/SocialMedia.MP4'
-    }
+        videoSrc: '/SocialMedia.MP4',
+        poster: '/posters/service-SocialMedia.jpg',
+    },
 ];
 
 interface ServicesSectionProps {
@@ -49,199 +80,261 @@ interface ServicesSectionProps {
 
 const ServicesSection: React.FC<ServicesSectionProps> = ({ isActive = false }) => {
     const [activeIndex, setActiveIndex] = useState(0);
-    const [progress, setProgress] = useState(0);
     const [isPaused, setIsPaused] = useState(false);
 
-    const sectionRef = useRef(null);
+    // Two ways to hear a card: rest the pointer on it, or pin the speaker.
+    const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+    const [speakerOn, setSpeakerOn] = useState(false);
+    const [hoverCapable, setHoverCapable] = useState(false);
+    const soundOn = speakerOn || (hoverCapable && hoveredIndex !== null);
 
-    // Refs for clean timer logic
-    const activeIndexRef = useRef(0);
-    const progressRef = useRef(0);
     const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
+    const progressBarRef = useRef<HTMLDivElement | null>(null);
+    const progressRef = useRef(0);           // 0–1 through the current slide
+    const activeIndexRef = useRef(0);
 
+    const navigate = useNavigate();
+    const reduceMotion = useReducedMotion();
+
+    activeIndexRef.current = activeIndex;
+
+    // ── Playback ────────────────────────────────────────────────────────────
+    // Only the card on stage plays; everything else is parked at its poster frame.
     useEffect(() => {
-        // Control main videos
         videoRefs.current.forEach((video, index) => {
-            if (video) {
-                // Play ONLY if this entire section is active, the video is the active card, and it's not paused by touch
-                if (isActive && !isPaused && index === activeIndex) {
-                    // iOS Safari requires the muted *attribute*, not just the property, for autoplay
-                    video.setAttribute('muted', '');
-                    video.muted = true;
-                    video.play().catch(e => console.log("Auto-play prevented:", e));
-                } else {
-                    video.pause();
-                }
+            if (!video) return;
+            if (isActive && index === activeIndex) {
+                video.play().catch(() => { /* poster stays up; the timer keeps going */ });
+            } else {
+                video.pause();
             }
         });
-    }, [isActive, isPaused, activeIndex]);
+    }, [isActive, activeIndex]);
 
-    // Progress tracking is now handled by ReactPlayer's onProgress callback
-    // No need for manual RAF-based updates
-
-    // Reset progress and video playhead when changing videos
+    // Hover-to-hear only makes sense with a real pointer. Touch devices keep the
+    // speaker button, which never fires audio the visitor did not ask for.
     useEffect(() => {
-        setProgress(0);
-        progressRef.current = 0;
+        const mq = window.matchMedia('(hover: hover) and (pointer: fine)');
+        const sync = () => setHoverCapable(mq.matches);
+        sync();
+        mq.addEventListener('change', sync);
+        return () => mq.removeEventListener('change', sync);
+    }, []);
 
-        const video = videoRefs.current[activeIndex];
-        if (video) {
-            video.currentTime = 0;
-        }
-    }, [activeIndex]);
+    // ── Sound ───────────────────────────────────────────────────────────────
+    // Sound belongs to exactly one video: the one on stage, and only while the
+    // visitor has asked for it.
+    useEffect(() => {
+        videoRefs.current.forEach((video, index) => {
+            if (!video) return;
+            const wantsSound = soundOn && isActive && index === activeIndex;
 
-    // ReactPlayer handles play/pause automatically via the playing prop
-
-    // Manual change handler
-    const handleManualChange = (index: number) => {
-        if (index === activeIndexRef.current) return; // Ignore if already active
-
-        // Pause current video
-        const currentVideo = videoRefs.current[activeIndexRef.current];
-        if (currentVideo) {
-            currentVideo.pause();
-        }
-
-        activeIndexRef.current = index;
-        progressRef.current = 0;
-        setActiveIndex(index);
-        setProgress(0);
-
-        // Play new video from start
-        const newVideo = videoRefs.current[index];
-        if (newVideo) {
-            // iOS Safari requires the muted *attribute* (not just the property) for autoplay
-            newVideo.setAttribute('muted', '');
-            newVideo.muted = true;
-            newVideo.currentTime = 0;
-            // Call play synchronously to maintain mobile Safari transient activation trust
-            const playPromise = newVideo.play();
-            if (playPromise !== undefined) {
-                playPromise.catch(e => console.log("Play interrupted or not ready", e));
+            if (!wantsSound) {
+                cancelFade(video);
+                video.volume = 0;
+                video.muted = true;
+                video.setAttribute('muted', '');   // iOS checks the attribute, not the property
+                return;
             }
+
+            video.volume = 0;
+            video.muted = false;
+            video.removeAttribute('muted');
+            fadeIn(video);
+
+            // A pointer resting on a card is not a user gesture, so Chrome may
+            // refuse audible playback and pause the video outright. Drop back to
+            // silent playback rather than leaving a frozen card — the speaker
+            // button is a real click, and works.
+            video.play().catch(() => {
+                cancelFade(video);
+                video.muted = true;
+                video.setAttribute('muted', '');
+                video.play().catch(() => { });
+            });
+        });
+    }, [soundOn, isActive, activeIndex]);
+
+    // Whenever the sounding video loses focus — the carousel moves on, the section
+    // scrolls away, or the tab goes to the background — sound returns to mute.
+    // Hover is deliberately left alone here: moving the pointer onto a new card
+    // changes `activeIndex`, and that preview should keep playing.
+    useEffect(() => { setSpeakerOn(false); }, [activeIndex]);
+    useEffect(() => {
+        if (!isActive) { setSpeakerOn(false); setHoveredIndex(null); }
+    }, [isActive]);
+    useEffect(() => {
+        const remuteWhenHidden = () => {
+            if (document.visibilityState !== 'visible') { setSpeakerOn(false); setHoveredIndex(null); }
+        };
+        document.addEventListener('visibilitychange', remuteWhenHidden);
+        window.addEventListener('blur', remuteWhenHidden);
+        return () => {
+            document.removeEventListener('visibilitychange', remuteWhenHidden);
+            window.removeEventListener('blur', remuteWhenHidden);
+        };
+    }, []);
+
+    // The button always does the opposite of what you can currently hear:
+    // silence a card you are hovering, or pin sound on one you are not.
+    const toggleSound = useCallback(() => {
+        if (soundOn) { setSpeakerOn(false); setHoveredIndex(null); }
+        else setSpeakerOn(true);
+    }, [soundOn]);
+
+    const goTo = useCallback((index: number) => {
+        if (index === activeIndexRef.current) return;
+        progressRef.current = 0;
+        if (progressBarRef.current) progressBarRef.current.style.transform = 'scaleX(0)';
+
+        const incoming = videoRefs.current[index];
+        if (incoming) {
+            incoming.currentTime = 0;
+            // Fired straight off the tap so iOS still counts it as user-activated.
+            incoming.play().catch(() => { });
         }
-    };
+        setActiveIndex(index);
+    }, []);
+
+    // ── Auto-advance ────────────────────────────────────────────────────────
+    // Reduced-motion visitors drive the carousel themselves.
+    useEffect(() => {
+        if (!isActive || isPaused || reduceMotion) return;
+
+        let frame = 0;
+        const start = performance.now() - progressRef.current * SLIDE_MS;
+
+        const tick = (now: number) => {
+            const pct = Math.min(1, (now - start) / SLIDE_MS);
+            progressRef.current = pct;
+            if (progressBarRef.current) progressBarRef.current.style.transform = `scaleX(${pct})`;
+            if (pct >= 1) {
+                goTo((activeIndexRef.current + 1) % services.length);
+                return;
+            }
+            frame = requestAnimationFrame(tick);
+        };
+
+        frame = requestAnimationFrame(tick);
+        return () => cancelAnimationFrame(frame);
+    }, [isActive, isPaused, activeIndex, reduceMotion, goTo]);
+
+    // Reset the clock when the section is scrolled away so it starts fresh on return.
+    useEffect(() => {
+        if (isActive) return;
+        progressRef.current = 0;
+        if (progressBarRef.current) progressBarRef.current.style.transform = 'scaleX(0)';
+    }, [isActive]);
 
     return (
-        <section ref={sectionRef} className="h-screen w-full flex flex-col justify-center bg-[#0d0d0d] overflow-hidden border-t border-white/5 relative py-8 sm:py-12 md:py-20">
-            <div className="container mx-auto px-6 md:px-12 h-full flex flex-col">
+        <section className="relative h-screen w-full flex flex-col justify-center overflow-hidden border-t border-white/5 bg-[#0d0d0d] pb-14 pt-24 sm:pb-12 sm:pt-28 md:pb-16 md:pt-28">
+            <div className="container mx-auto flex h-full flex-col px-6 md:px-12">
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
+                    animate={isActive ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
                     transition={{ duration: 0.8 }}
-                    className="text-center mb-4 md:mb-8 flex-shrink-0"
+                    className="mb-4 flex-shrink-0 text-center md:mb-8"
                 >
-                    <span className="text-[11px] uppercase tracking-[0.3em] md:tracking-[0.6em] text-[#bfff00] mb-3 block opacity-70">
+                    <span className="mb-3 block text-[11px] uppercase tracking-[0.3em] text-[#bfff00] opacity-70 md:tracking-[0.6em]">
                         Our Expertise
                     </span>
-                    <h2 className="text-3xl md:text-5xl serif">Services</h2>
+                    <h2 className="serif text-3xl md:text-5xl">Services</h2>
                 </motion.div>
 
                 <div
-                    className="flex-1 flex flex-row gap-2 md:gap-4 min-h-0"
-                    onMouseLeave={() => setIsPaused(false)}
+                    className="flex min-h-0 flex-1 flex-row gap-2 md:gap-4"
+                    onMouseLeave={() => { setIsPaused(false); setHoveredIndex(null); }}
                 >
                     {services.map((service, index) => {
-                        // Renamed from isActive to avoid shadowing the section-level isActive prop.
-                        // The prop controls whether the section is in view;
-                        // isCardActive controls which service card is expanded.
+                        // `isCardActive` = this card is on stage.
+                        // `isActive` (prop) = the whole section is in view.
                         const isCardActive = activeIndex === index;
+                        const isNext = index === (activeIndex + 1) % services.length;
+
                         return (
                             <motion.div
                                 key={service.id}
                                 layout
-                                onClick={() => handleManualChange(index)}
-                                onMouseEnter={() => {
-                                    setIsPaused(true);
-                                    if (!isCardActive) handleManualChange(index);
+                                role="tab"
+                                aria-selected={isCardActive}
+                                aria-label={service.title}
+                                tabIndex={0}
+                                onClick={() => goTo(index)}
+                                onKeyDown={e => {
+                                    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); goTo(index); }
                                 }}
-                                onMouseLeave={() => setIsPaused(false)}
-                                className={`relative rounded-2xl overflow-hidden cursor-pointer select-none transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]
-                  ${isCardActive ? 'flex-[4] sm:flex-[3] md:flex-[4]' : 'flex-[0.5] sm:flex-1 hover:flex-[1.2]'}
-                  ${isCardActive ? 'grayscale-0' : 'grayscale hover:grayscale-0'}
+                                onMouseEnter={() => { setIsPaused(true); setHoveredIndex(index); goTo(index); }}
+                                onMouseLeave={() => { setIsPaused(false); setHoveredIndex(h => (h === index ? null : h)); }}
+                                className={`relative cursor-pointer select-none overflow-hidden rounded-2xl outline-none transition-[flex,filter] duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] focus-visible:ring-2 focus-visible:ring-[#bfff00]
+                  ${isCardActive
+                                        ? 'flex-[4] grayscale-0 ring-1 ring-[#bfff00]/25 sm:flex-[3] md:flex-[4]'
+                                        : 'flex-[0.5] grayscale hover:grayscale-0 sm:flex-1 hover:flex-[1.2]'}
                 `}
                             >
-                                {/* Background Media — two layers: blurry fill + clear video */}
-                                <div className="absolute inset-0 bg-[#1a1a1a] overflow-hidden">
-                                    {/* Layer 1: Blurry moving gradient background */}
-                                    <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                                        <motion.div
-                                            animate={isCardActive ? {
-                                                scale: [1, 1.2, 1],
-                                                rotate: [0, 90, 0]
-                                            } : {
-                                                scale: 1,
-                                                rotate: 0
-                                            }}
-                                            transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
-                                            className={`absolute inset-[-50%] transition-opacity duration-700 ${isCardActive ? 'opacity-80' : 'opacity-30'}`}
-                                            style={{
-                                                background: 'radial-gradient(circle at 50% 50%, rgba(191,255,0,0.15) 0%, rgba(112,0,255,0.15) 50%, transparent 100%)',
-                                                filter: 'blur(40px)'
-                                            }}
-                                        />
-                                    </div>
+                                {/* ── Media ─────────────────────────────────────────────
+                                    Every clip is vertical 9:16 and every card is a tall
+                                    column, so object-cover fills it edge to edge — no
+                                    letterboxing, no blurred filler. */}
+                                <div className="absolute inset-0 overflow-hidden bg-[#111]">
+                                    <video
+                                        ref={el => {
+                                            videoRefs.current[index] = el;
+                                            if (el) { el.setAttribute('muted', ''); el.muted = true; }
+                                        }}
+                                        src={service.videoSrc}
+                                        poster={service.poster}
+                                        className={`h-full w-full object-cover object-center transition-opacity duration-700 ${isCardActive ? 'opacity-100' : 'opacity-50'}`}
+                                        muted
+                                        loop
+                                        playsInline
+                                        disablePictureInPicture
+                                        preload={isCardActive ? 'auto' : isNext ? 'metadata' : 'none'}
+                                        aria-hidden="true"
+                                        tabIndex={-1}
+                                        style={{ pointerEvents: 'none' }}
+                                    />
 
-                                    {/* Layer 2: Clear video (centered, normal aspect ratio) */}
-                                    <div className={`absolute inset-0 transition-opacity duration-700 ${isCardActive ? 'opacity-70 z-10' : 'opacity-30 z-0'}`}>
-                                        <video
-                                            ref={el => {
-                                                videoRefs.current[index] = el;
-                                                // iOS Safari needs the muted HTML *attribute*, not just the DOM property
-                                                if (el) { el.setAttribute('muted', ''); el.muted = true; }
-                                            }}
-                                            src={service.videoSrc}
-                                            className="w-full h-full object-contain object-center pointer-events-none"
-                                            muted={true}
-                                            loop={false} // NEVER loop. We want onEnded to fire so we can advance to the next card.
-                                            playsInline={true}
-                                            preload={isActive ? "auto" : "metadata"} // uses section isActive prop (not shadowed)
-                                            style={{ pointerEvents: 'none' }}
-                                            onCanPlay={(e) => {
-                                                e.currentTarget.playbackRate = 0.5;
-                                            }}
-                                            onTimeUpdate={(e) => {
-                                                if (isCardActive && !isPaused) {
-                                                    const video = e.currentTarget;
-                                                    const currentProgress = (video.currentTime / video.duration) * 100;
-
-                                                    // Throttle React state updates to avoid render thrashing, but keep ref precise
-                                                    progressRef.current = currentProgress;
-                                                    if (Math.abs(currentProgress - progress) > 0.5 || currentProgress === 100) {
-                                                        setProgress(currentProgress);
-                                                    }
-                                                }
-                                            }}
-                                            onEnded={() => {
-                                                if (isCardActive) {
-                                                    // Move to next slide
-                                                    progressRef.current = 0;
-                                                    setProgress(0);
-
-                                                    const nextIndex = (activeIndexRef.current + 1) % services.length;
-                                                    handleManualChange(nextIndex);
-                                                }
-                                            }}
-                                        />
-                                    </div>
-
-                                    {/* Gradient overlay */}
-                                    <div className={`absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent transition-opacity duration-500 ${isCardActive ? 'opacity-80' : 'opacity-60'}`} />
+                                    {/* Scrim — heavy only where the copy sits, so the footage
+                                        stays visible everywhere else. */}
+                                    <div
+                                        className="pointer-events-none absolute inset-0 transition-opacity duration-500"
+                                        style={{
+                                            background: isCardActive
+                                                ? 'linear-gradient(to top, rgba(0,0,0,0.94) 0%, rgba(0,0,0,0.6) 28%, rgba(0,0,0,0.08) 58%, rgba(0,0,0,0.35) 100%)'
+                                                : 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.5) 60%, rgba(0,0,0,0.5) 100%)',
+                                        }}
+                                    />
                                 </div>
 
-                                {/* Progress Bar (Visible only when active) */}
+                                {/* Progress — one bar, driven straight from the carousel clock */}
                                 {isCardActive && (
-                                    <div className="absolute top-0 left-0 w-full h-1 bg-white/10 z-20">
-                                        <motion.div
-                                            className="h-full bg-[#bfff00]"
-                                            animate={{ width: `${progress}%` }}
-                                            transition={{ duration: 0.2, ease: "linear" }}
+                                    <div className="absolute left-0 top-0 z-20 h-1 w-full bg-white/10">
+                                        <div
+                                            ref={progressBarRef}
+                                            className="h-full origin-left bg-[#bfff00]"
+                                            style={{ transform: 'scaleX(0)' }}
                                         />
                                     </div>
                                 )}
 
-                                {/* Content Container */}
-                                <div className="relative h-full z-10 p-4 md:p-6 flex flex-col justify-end">
+                                {/* Sound — lives on the card that is playing. Muting is
+                                    handled centrally the moment this card loses the stage. */}
+                                {isCardActive && (
+                                    <button
+                                        onClick={e => { e.stopPropagation(); toggleSound(); }}
+                                        aria-label={soundOn ? `Mute ${service.title}` : `Play ${service.title} with sound`}
+                                        aria-pressed={soundOn}
+                                        className={`absolute right-3 top-4 z-30 rounded-full p-2.5 backdrop-blur-md ring-1 transition-colors md:right-4 md:top-5
+                      ${soundOn
+                                                ? 'bg-[#bfff00] text-black ring-[#bfff00]'
+                                                : 'bg-black/45 text-white/90 ring-white/15 hover:bg-black/70 hover:text-[#bfff00]'}`}
+                                    >
+                                        {soundOn ? <Volume2 size={15} /> : <VolumeX size={15} />}
+                                    </button>
+                                )}
+
+                                {/* ── Copy ──────────────────────────────────────────────── */}
+                                <div className="relative z-10 flex h-full flex-col justify-end p-4 md:p-6">
                                     <AnimatePresence mode="wait">
                                         {isCardActive ? (
                                             <motion.div
@@ -252,16 +345,20 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ isActive = false }) =
                                                 transition={{ duration: 0.3, delay: 0.1 }}
                                                 className="space-y-4"
                                             >
-                                                <div className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center mb-4 text-[#bfff00]">
+                                                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-[#bfff00] backdrop-blur-sm">
                                                     <service.icon size={24} />
                                                 </div>
-                                                <h3 className="text-lg sm:text-2xl md:text-4xl serif leading-tight">{service.title}</h3>
-                                                <p className="text-xs sm:text-sm md:text-base text-white/70 max-w-[280px] sm:max-w-sm md:max-w-md font-light leading-relaxed">
+                                                <h3 className="serif text-lg leading-tight sm:text-2xl md:text-4xl">{service.title}</h3>
+                                                <p className="max-w-[280px] text-xs font-light leading-relaxed text-white/70 sm:max-w-sm sm:text-sm md:max-w-md md:text-base">
                                                     {service.description}
                                                 </p>
                                                 <div className="pt-4">
-                                                    <button className="flex items-center gap-2 text-[11px] uppercase tracking-wider md:tracking-widest text-white hover:text-[#bfff00] transition-colors min-h-[44px]">
-                                                        View Projects <ArrowUpRight size={14} />
+                                                    <button
+                                                        onClick={e => { e.stopPropagation(); navigate('/portfolio'); }}
+                                                        className="group flex min-h-[44px] items-center gap-2 text-[11px] uppercase tracking-wider text-white transition-colors hover:text-[#bfff00] md:tracking-widest"
+                                                    >
+                                                        View Projects
+                                                        <ArrowUpRight size={14} className="transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
                                                     </button>
                                                 </div>
                                             </motion.div>
@@ -272,12 +369,14 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ isActive = false }) =
                                                 animate={{ opacity: 1 }}
                                                 exit={{ opacity: 0 }}
                                                 transition={{ duration: 0.3 }}
-                                                className="flex flex-col items-center justify-end h-full absolute inset-0 pb-8"
+                                                className="absolute inset-0 flex h-full flex-col items-center justify-end pb-8"
                                             >
-                                                <div className="-rotate-90 origin-center whitespace-nowrap mb-12">
-                                                    <span className="text-xs md:text-sm uppercase tracking-[0.1em] md:tracking-[0.2em] font-bold text-white/50">{service.shortTitle}</span>
+                                                <div className="mb-12 origin-center -rotate-90 whitespace-nowrap">
+                                                    <span className="text-xs font-bold uppercase tracking-[0.1em] text-white/60 md:text-sm md:tracking-[0.2em]">
+                                                        {service.shortTitle}
+                                                    </span>
                                                 </div>
-                                                <div className="p-3 rounded-full bg-white/5 backdrop-blur-sm text-white/50">
+                                                <div className="rounded-full bg-white/5 p-3 text-white/50 backdrop-blur-sm">
                                                     <service.icon size={20} />
                                                 </div>
                                             </motion.div>
