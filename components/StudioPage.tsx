@@ -293,7 +293,7 @@ const StudioPage: React.FC = () => {
         </h2>
 
         {videos.length === 0 && !listLoading && (
-          <p className="text-white/40 text-sm">No videos uploaded yet. The portfolio is still showing the old Vimeo list.</p>
+          <p className="text-white/40 text-sm">No videos uploaded yet. The portfolio is empty until you add one.</p>
         )}
 
         <ul className="space-y-3">

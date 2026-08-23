@@ -1,31 +1,31 @@
 import { useEffect, useState } from 'react';
 import type { PortfolioVideo, VideoManifest } from '../lib/videoTypes';
-import { LEGACY_VIMEO_VIDEOS } from '../lib/legacyVimeo';
+import { LOCAL_VIDEOS } from '../lib/localVideos';
 
-// Public CDN origin, e.g. videos.sydhustle.com. Safe to expose — it appears in
-// every video URL anyway. A bare hostname is assumed to be https; an explicit
-// scheme is honoured, which is what makes local testing against the dev server
-// possible.
+// Public CDN origin, e.g. asani-cdn.sydhustle.com. Safe to expose — it appears
+// in every video URL anyway. A bare hostname is assumed to be https; an explicit
+// scheme is honoured, which is what makes local testing possible.
 const RAW_HOST = (import.meta.env.VITE_R2_PUBLIC_HOST ?? '').replace(/\/+$/, '');
 const PUBLIC_ORIGIN = RAW_HOST && !/^https?:\/\//.test(RAW_HOST) ? `https://${RAW_HOST}` : RAW_HOST;
 
 export interface UseVideosResult {
   videos: PortfolioVideo[];
+  /** True until the first response lands, so callers can hold the empty state. */
   loading: boolean;
-  source: 'r2' | 'vimeo';
 }
 
 /**
  * Reads the library from manifest.json on the R2 CDN.
  *
  * Deliberately not routed through /api: the manifest is public and edge-cached,
- * so the portfolio costs zero serverless invocations to view. Falls back to the
- * hardcoded Vimeo list whenever R2 is unconfigured, unreachable, or empty, so
- * the page is never blank mid-migration.
+ * so viewing the portfolio costs zero serverless invocations.
+ *
+ * R2 always takes precedence. The bundled local reel only shows while R2 is
+ * unconfigured, unreachable, or still empty — the moment the manifest lists a
+ * video, these are replaced.
  */
 export function useVideos(): UseVideosResult {
-  const [videos, setVideos] = useState<PortfolioVideo[]>(LEGACY_VIMEO_VIDEOS);
-  const [source, setSource] = useState<'r2' | 'vimeo'>('vimeo');
+  const [videos, setVideos] = useState<PortfolioVideo[]>(LOCAL_VIDEOS);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -37,7 +37,9 @@ export function useVideos(): UseVideosResult {
     fetch(`${base}/manifest.json`, { signal: controller.signal })
       .then(res => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
       .then((manifest: VideoManifest) => {
-        const mapped: PortfolioVideo[] = (manifest.videos ?? []).map(v => ({
+        const entries = manifest.videos ?? [];
+        if (entries.length === 0) return;   // nothing uploaded yet — keep the local reel
+        setVideos(entries.map(v => ({
           id: v.id,
           source: 'r2' as const,
           title: v.title,
@@ -48,17 +50,15 @@ export function useVideos(): UseVideosResult {
           width: v.width,
           height: v.height,
           duration: v.duration,
-        }));
-        if (mapped.length > 0) {
-          setVideos(mapped);
-          setSource('r2');
-        }
+        })));
       })
-      .catch(() => { /* keep the legacy list */ })
+      .catch(err => {
+        if (err?.name !== 'AbortError') console.error('[useVideos]', err);
+      })
       .finally(() => setLoading(false));
 
     return () => controller.abort();
   }, []);
 
-  return { videos, loading, source };
+  return { videos, loading };
 }

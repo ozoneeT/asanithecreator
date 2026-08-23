@@ -54,6 +54,22 @@ const devApiPlugin = (): Plugin => ({
   },
 });
 
+/**
+ * Preconnects to the R2 video CDN. Videos are the heaviest thing on the page,
+ * so paying the DNS + TLS cost during HTML parse rather than on first play is
+ * worth a tag.
+ */
+const cdnPreconnectPlugin = (host: string): Plugin => ({
+  name: 'asani-cdn-preconnect',
+  transformIndexHtml(html) {
+    const clean = host.replace(/^https?:\/\//, '').replace(/\/+$/, '');
+    const tag = clean
+      ? `<link rel="preconnect" href="https://${clean}" crossorigin />`
+      : '';
+    return html.replace('<!--video-cdn-preconnect-->', tag);
+  },
+});
+
 export default defineConfig(({ mode }) => {
   // Empty prefix loads unprefixed secrets (BUNNY_*, STUDIO_PASSWORD) too, so the
   // dev middleware above can read them from process.env.
@@ -65,7 +81,7 @@ export default defineConfig(({ mode }) => {
       port: 3000,
       host: '0.0.0.0',
     },
-    plugins: [react(), devApiPlugin()],
+    plugins: [react(), devApiPlugin(), cdnPreconnectPlugin(env.VITE_R2_PUBLIC_HOST ?? '')],
     define: {
       'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)

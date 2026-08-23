@@ -1,28 +1,19 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, Heart, MessageCircle, Share2, Music, Volume2, VolumeX, Loader2 } from 'lucide-react';
+import { ChevronLeft, Heart, MessageCircle, Share2, Music, Volume2, VolumeX, Loader2, Film } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import type Player from '@vimeo/player';
 import VideoPlayer, { type VideoPlayerHandle } from './VideoPlayer';
 import { useVideos } from '../hooks/useVideos';
 
-// Legacy Vimeo embed. Stable URL so the iframe never reloads;
-// muted=1 is required for autoplay on iOS — we un-mute via the SDK.
-const buildVimeoSrc = (videoId: string) =>
-  `https://player.vimeo.com/video/${videoId}?loop=1&muted=1&controls=0&dnt=1&title=0&byline=0&portrait=0`;
-
 const PortfolioPage: React.FC = () => {
   const navigate = useNavigate();
-  const { videos } = useVideos();
+  const { videos, loading } = useVideos();
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isMuted, setIsMuted] = useState(true);
   const [showUnmuteHint, setShowUnmuteHint] = useState(false);
-  // Vimeo slides only — Bunny slides use the <video poster> attribute instead.
-  const [startedIndices, setStartedIndices] = useState<Set<number>>(() => new Set());
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const vimeoRefs = useRef<Map<number, Player>>(new Map());
   const playerRefs = useRef<Map<number, VideoPlayerHandle>>(new Map());
 
   // Refs that are always current — safe to read inside async callbacks
@@ -31,16 +22,15 @@ const PortfolioPage: React.FC = () => {
 
   useEffect(() => { currentIndexRef.current = currentIndex; }, [currentIndex]);
 
-  // Reset only when the library's *contents* change (the Vimeo fallback being
-  // replaced by R2), never on a mere new array identity — a re-fetch returning
-  // the same videos would otherwise yank the viewer back to the first slide.
+  // Reset only when the library's *contents* change, never on a mere new array
+  // identity — a re-fetch returning the same videos would otherwise yank the
+  // viewer back to the first slide.
   const signature = videos.map(v => v.id).join('|');
   const prevSignature = useRef(signature);
   useEffect(() => {
     if (prevSignature.current === signature) return;
     prevSignature.current = signature;
     setCurrentIndex(0);
-    setStartedIndices(new Set());
     containerRef.current?.scrollTo({ top: 0 });
   }, [signature]);
 
@@ -58,39 +48,6 @@ const PortfolioPage: React.FC = () => {
     }
   }, [videos.length]);
 
-  const applyUnmuteToVimeo = (player: Player) => {
-    player.setMuted(false).catch(() => {});
-    player.setVolume(1).catch(() => {});
-  };
-
-  // ── Attach the Vimeo SDK once an iframe loads ──────────────
-  // Empty deps + refs only: onLoad fires once, so captured state would go stale.
-  const onVimeoLoad = useCallback((iframe: HTMLIFrameElement, index: number) => {
-    vimeoRefs.current.get(index)?.destroy().catch(() => {});
-
-    // Fetched on demand so the Vimeo SDK disappears from the bundle entirely
-    // once every video has moved to Bunny.
-    void import('@vimeo/player').then(({ default: VimeoPlayer }) => {
-      const player = new VimeoPlayer(iframe);
-      vimeoRefs.current.set(index, player);
-
-      // timeupdate (not 'play') — only fires once frames are actually moving,
-      // so the poster stays up through the whole player boot.
-      const markStarted = () => {
-        setStartedIndices(prev => (prev.has(index) ? prev : new Set(prev).add(index)));
-        player.off('timeupdate', markStarted);
-      };
-      player.on('timeupdate', markStarted);
-
-      player.ready().then(() => {
-        if (index === currentIndexRef.current) {
-          player.play().catch(() => {});
-          if (!isMutedRef.current) applyUnmuteToVimeo(player);
-        }
-      }).catch(() => {});
-    });
-  }, []);
-
   const registerPlayer = useCallback((index: number, handle: VideoPlayerHandle | null) => {
     if (handle) playerRefs.current.set(index, handle);
     else playerRefs.current.delete(index);
@@ -98,29 +55,8 @@ const PortfolioPage: React.FC = () => {
 
   // ── React to index changes ─────────────────────────────────
   useEffect(() => {
-    vimeoRefs.current.forEach((player, idx) => {
-      if (idx === currentIndex) {
-        player.play().catch(() => {});
-        if (!isMutedRef.current) applyUnmuteToVimeo(player);
-      } else {
-        player.pause().catch(() => {});
-      }
-
-      // Free memory for slides more than one step away
-      if (Math.abs(idx - currentIndex) > 1) {
-        player.destroy().catch(() => {});
-        vimeoRefs.current.delete(idx);
-        // Its iframe unmounts too, so show the poster again on re-entry.
-        setStartedIndices(prev => {
-          if (!prev.has(idx)) return prev;
-          const next = new Set(prev);
-          next.delete(idx);
-          return next;
-        });
-      }
-    });
-
-    // VideoPlayer pauses itself via its `active` prop; only mute needs syncing.
+    // VideoPlayer starts and stops itself via its `active` prop; only the mute
+    // state has to follow the viewer from slide to slide.
     playerRefs.current.get(currentIndex)?.setMuted(isMutedRef.current);
 
     if (!isMutedRef.current) {
@@ -130,19 +66,12 @@ const PortfolioPage: React.FC = () => {
     }
   }, [currentIndex]);
 
-  // ── Mute control, applied to whichever player is active ────
+  // ── Mute control ───────────────────────────────────────────
   const applyMuted = useCallback((next: boolean) => {
     setIsMuted(next);
     isMutedRef.current = next;
     setShowUnmuteHint(false);
-
-    const idx = currentIndexRef.current;
-    playerRefs.current.get(idx)?.setMuted(next);
-    const player = vimeoRefs.current.get(idx);
-    if (player) {
-      player.setMuted(next).catch(() => {});
-      player.setVolume(next ? 0 : 1).catch(() => {});
-    }
+    playerRefs.current.get(currentIndexRef.current)?.setMuted(next);
   }, []);
 
   const handleToggleMute = useCallback((e: React.MouseEvent) => {
@@ -156,13 +85,35 @@ const PortfolioPage: React.FC = () => {
     applyMuted(false);
   }, [applyMuted]);
 
-  useEffect(() => {
-    const vimeo = vimeoRefs.current;
-    return () => {
-      vimeo.forEach(p => p.destroy().catch(() => {}));
-      vimeo.clear();
-    };
-  }, []);
+  const BackButton = (
+    <button
+      onClick={() => navigate(-1)}
+      className="fixed top-6 left-6 md:top-8 md:left-8 z-[100] p-3 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-white hover:bg-white/10 transition-colors"
+      aria-label="Go back"
+    >
+      <ChevronLeft className="w-6 h-6" />
+    </button>
+  );
+
+  // ── Empty / loading states ─────────────────────────────────
+  if (videos.length === 0) {
+    return (
+      <div className="h-[100dvh] w-full bg-black flex flex-col items-center justify-center text-center px-6">
+        {BackButton}
+        {loading ? (
+          <Loader2 className="w-8 h-8 text-white/40 animate-spin" />
+        ) : (
+          <>
+            <Film className="w-10 h-10 text-white/25 mb-5" />
+            <h1 className="text-white text-xl font-bold serif mb-2">Nothing here yet</h1>
+            <p className="text-white/45 text-sm max-w-xs">
+              New work lands here as soon as it is uploaded.
+            </p>
+          </>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div
@@ -170,13 +121,7 @@ const PortfolioPage: React.FC = () => {
       onScroll={handleScroll}
       className="h-[100dvh] w-full bg-black overflow-y-auto overflow-x-hidden snap-y snap-mandatory relative"
     >
-      <button
-        onClick={() => navigate(-1)}
-        className="fixed top-6 left-6 md:top-8 md:left-8 z-[100] p-3 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-white hover:bg-white/10 transition-colors"
-        aria-label="Go back"
-      >
-        <ChevronLeft className="w-6 h-6" />
-      </button>
+      {BackButton}
 
       <AnimatePresence>
         {showUnmuteHint && (
@@ -199,7 +144,6 @@ const PortfolioPage: React.FC = () => {
       {videos.map((video, index) => {
         const isActiveVideo = index === currentIndex;
         const isNearby = Math.abs(currentIndex - index) <= 1;
-        const hasStarted = startedIndices.has(index);
 
         return (
           <div
@@ -209,46 +153,31 @@ const PortfolioPage: React.FC = () => {
           >
             {isNearby && (
               <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
-                <div className="w-full h-full relative flex items-center justify-center bg-zinc-900">
-                  <div className="absolute flex flex-col items-center justify-center gap-3 z-0 pointer-events-none">
-                    <Loader2 className="w-8 h-8 text-white/50 animate-spin" />
-                    <span className="text-white/50 text-sm font-medium">Loading...</span>
-                  </div>
-
-                  {video.mp4Url ? (
-                    // R2: native player. The poster attribute covers startup,
-                    // so no separate overlay image is needed.
-                    <VideoPlayer
-                      ref={handle => registerPlayer(index, handle)}
-                      src={video.mp4Url}
-                      poster={video.posterUrl}
-                      active={isActiveVideo}
-                      muted={isMuted}
-                      className="w-full h-full object-cover scale-[1.05] relative z-10 bg-transparent pointer-events-none"
+                <div className="w-full h-full relative flex items-center justify-center bg-black">
+                  {video.posterUrl && (
+                    // Vertical video leaves dead space on a wide screen. A blurred
+                    // blow-up of the poster fills it instead of black bars.
+                    <img
+                      src={video.posterUrl}
+                      alt=""
+                      aria-hidden="true"
+                      className="absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-40 z-0"
                     />
-                  ) : (
-                    <>
-                      <iframe
-                        src={buildVimeoSrc(video.id)}
-                        className="w-full h-full scale-[1.05] pointer-events-none relative z-10 bg-transparent"
-                        allow="autoplay; fullscreen; picture-in-picture"
-                        loading={index === 0 ? 'eager' : 'lazy'}
-                        title={video.title}
-                        onLoad={e => onVimeoLoad(e.currentTarget, index)}
-                      />
-                      {/* Poster paints instantly from our own origin, then fades
-                          once the Vimeo player produces real frames. */}
-                      <img
-                        src={video.posterUrl}
-                        alt=""
-                        aria-hidden="true"
-                        decoding="async"
-                        fetchPriority={index === 0 ? 'high' : 'auto'}
-                        onError={e => { e.currentTarget.style.display = 'none'; }}
-                        className={`absolute inset-0 w-full h-full object-cover scale-[1.05] z-20 pointer-events-none transition-opacity duration-500 ${hasStarted ? 'opacity-0' : 'opacity-100'}`}
-                      />
-                    </>
                   )}
+
+                  <Loader2 className="absolute w-8 h-8 text-white/40 animate-spin z-0" />
+
+                  {/* Full-bleed on a phone, centred column on desktop, never
+                      stretched — the width cap lives in VideoPlayer. */}
+                  <VideoPlayer
+                    ref={handle => registerPlayer(index, handle)}
+                    src={video.mp4Url}
+                    poster={video.posterUrl}
+                    active={isActiveVideo}
+                    muted={isMuted}
+                    aspectRatio={video.width && video.height ? video.width / video.height : undefined}
+                    className="relative z-10 h-full w-full object-cover mx-auto pointer-events-none"
+                  />
                 </div>
               </div>
             )}

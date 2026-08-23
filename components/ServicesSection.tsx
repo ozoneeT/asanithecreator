@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { Camera, Film, MonitorPlay, Zap, ArrowUpRight, Volume2, VolumeX } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -17,6 +17,16 @@ const SLIDE_MS = 8000;
 const FADE_MS = 350;
 const FADE_STEP_MS = 25;
 const fades = new WeakMap<HTMLVideoElement, ReturnType<typeof setInterval>>();
+
+// Chrome can tell us up front whether a video may play with sound. Browsers
+// without the API get the benefit of the doubt — the pause handler corrects us.
+type NavigatorWithPolicy = Navigator & { getAutoplayPolicy?: (target: unknown) => string };
+const supportsAutoplayPolicy = () =>
+    typeof (navigator as NavigatorWithPolicy).getAutoplayPolicy === 'function';
+const audioIsAllowed = () => {
+    const nav = navigator as NavigatorWithPolicy;
+    return nav.getAutoplayPolicy ? nav.getAutoplayPolicy('mediaelement') === 'allowed' : true;
+};
 
 const cancelFade = (video: HTMLVideoElement) => {
     const running = fades.get(video);
@@ -86,17 +96,35 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ isActive = false }) =
     const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
     const [speakerOn, setSpeakerOn] = useState(false);
     const [hoverCapable, setHoverCapable] = useState(false);
-    const soundOn = speakerOn || (hoverCapable && hoveredIndex !== null);
+    // Browsers stop a video that becomes audible without permission. Hover is not
+    // a gesture, so we only take the risk once we believe audio is allowed —
+    // otherwise the preview would cost the visitor a stalled video.
+    const [audioUnlocked, setAudioUnlocked] = useState(!supportsAutoplayPolicy());
+    const soundOn = speakerOn || (hoverCapable && audioUnlocked && hoveredIndex !== null);
 
     const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
+    // One stable callback per card. An inline arrow here would be a fresh function
+    // on every render, so React would re-run it every time — and it sets
+    // `muted = true`, which would silently undo whatever the visitor just asked for.
+    const setVideoRef = useMemo(
+        () => services.map((_, i) => (el: HTMLVideoElement | null) => {
+            videoRefs.current[i] = el;
+            if (el) { el.setAttribute('muted', ''); el.muted = true; }  // iOS reads the attribute
+        }),
+        [],
+    );
     const progressBarRef = useRef<HTMLDivElement | null>(null);
     const progressRef = useRef(0);           // 0–1 through the current slide
     const activeIndexRef = useRef(0);
+    const isActiveRef = useRef(isActive);
+    const wantsSoundRef = useRef(false);
 
     const navigate = useNavigate();
     const reduceMotion = useReducedMotion();
 
     activeIndexRef.current = activeIndex;
+    isActiveRef.current = isActive;
+    wantsSoundRef.current = soundOn;
 
     // ── Playback ────────────────────────────────────────────────────────────
     // Only the card on stage plays; everything else is parked at its poster frame.
@@ -141,19 +169,57 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ isActive = false }) =
             video.muted = false;
             video.removeAttribute('muted');
             fadeIn(video);
-
-            // A pointer resting on a card is not a user gesture, so Chrome may
-            // refuse audible playback and pause the video outright. Drop back to
-            // silent playback rather than leaving a frozen card — the speaker
-            // button is a real click, and works.
-            video.play().catch(() => {
-                cancelFade(video);
-                video.muted = true;
-                video.setAttribute('muted', '');
-                video.play().catch(() => { });
-            });
         });
     }, [soundOn, isActive, activeIndex]);
+
+    // A card that goes audible without permission gets stopped by the browser.
+    // `play()` is no help here — it resolves, because the element *was* playing
+    // when we called it, and the stop lands afterwards. The pause event is the
+    // only reliable signal, so recovery hangs off it: drop back to silent
+    // playback and stop offering hover previews until a real click says otherwise.
+    const handlePause = useCallback((index: number) => {
+        const video = videoRefs.current[index];
+        if (!video) return;
+        // Leaving the stage is a pause we asked for.
+        if (!isActiveRef.current || index !== activeIndexRef.current || !wantsSoundRef.current) return;
+        // So is the browser suspending media in a tab nobody is looking at.
+        if (document.visibilityState !== 'visible') return;
+
+        cancelFade(video);
+        video.volume = 0;
+        video.muted = true;
+        video.setAttribute('muted', '');
+        setAudioUnlocked(false);
+        setSpeakerOn(false);
+        setHoveredIndex(null);
+        void video.play().catch(() => { });
+    }, []);
+
+    // A click anywhere is what browsers want before they will let a video be
+    // heard, so re-ask after every one. The policy flips once the click has been
+    // processed, hence the deferred read.
+    useEffect(() => {
+        if (!supportsAutoplayPolicy()) return;
+        const sync = () => setAudioUnlocked(audioIsAllowed());
+        const resync = () => { window.setTimeout(sync, 0); };
+        sync();
+        document.addEventListener('click', resync, { passive: true });
+        document.addEventListener('keydown', resync);
+        return () => {
+            document.removeEventListener('click', resync);
+            document.removeEventListener('keydown', resync);
+        };
+    }, []);
+
+    // The speaker button is a real gesture, so it is allowed to try even when we
+    // think audio is blocked. If it plays without the browser stepping in, that
+    // settles it — hover previews are safe to offer again. `handlePause` clears
+    // `speakerOn`, which cancels this before it can fire.
+    useEffect(() => {
+        if (!speakerOn) return;
+        const settled = window.setTimeout(() => setAudioUnlocked(true), 600);
+        return () => window.clearTimeout(settled);
+    }, [speakerOn]);
 
     // Whenever the sounding video loses focus — the carousel moves on, the section
     // scrolls away, or the tab goes to the background — sound returns to mute.
@@ -167,10 +233,17 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ isActive = false }) =
         const remuteWhenHidden = () => {
             if (document.visibilityState !== 'visible') { setSpeakerOn(false); setHoveredIndex(null); }
         };
-        document.addEventListener('visibilitychange', remuteWhenHidden);
+        // Browsers suspend media in a backgrounded tab and do not restart it, so
+        // the card would sit frozen on the visitor's return.
+        const resumeWhenVisible = () => {
+            if (document.visibilityState !== 'visible' || !isActiveRef.current) return;
+            videoRefs.current[activeIndexRef.current]?.play().catch(() => { });
+        };
+        const onVisibilityChange = () => { remuteWhenHidden(); resumeWhenVisible(); };
+        document.addEventListener('visibilitychange', onVisibilityChange);
         window.addEventListener('blur', remuteWhenHidden);
         return () => {
-            document.removeEventListener('visibilitychange', remuteWhenHidden);
+            document.removeEventListener('visibilitychange', onVisibilityChange);
             window.removeEventListener('blur', remuteWhenHidden);
         };
     }, []);
@@ -250,6 +323,9 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ isActive = false }) =
                         // `isActive` (prop) = the whole section is in view.
                         const isCardActive = activeIndex === index;
                         const isNext = index === (activeIndex + 1) % services.length;
+                        // Hovering cannot make sound yet — nudge the visitor towards the click
+                        // that unlocks it, instead of leaving them with silent hover.
+                        const needsClickForSound = isCardActive && hoverCapable && !audioUnlocked && hoveredIndex === index;
 
                         return (
                             <motion.div
@@ -277,10 +353,7 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ isActive = false }) =
                                     letterboxing, no blurred filler. */}
                                 <div className="absolute inset-0 overflow-hidden bg-[#111]">
                                     <video
-                                        ref={el => {
-                                            videoRefs.current[index] = el;
-                                            if (el) { el.setAttribute('muted', ''); el.muted = true; }
-                                        }}
+                                        ref={setVideoRef[index]}
                                         src={service.videoSrc}
                                         poster={service.poster}
                                         className={`h-full w-full object-cover object-center transition-opacity duration-700 ${isCardActive ? 'opacity-100' : 'opacity-50'}`}
@@ -289,6 +362,7 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ isActive = false }) =
                                         playsInline
                                         disablePictureInPicture
                                         preload={isCardActive ? 'auto' : isNext ? 'metadata' : 'none'}
+                                        onPause={() => handlePause(index)}
                                         aria-hidden="true"
                                         tabIndex={-1}
                                         style={{ pointerEvents: 'none' }}
@@ -327,7 +401,8 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({ isActive = false }) =
                                         className={`absolute right-3 top-4 z-30 rounded-full p-2.5 backdrop-blur-md ring-1 transition-colors md:right-4 md:top-5
                       ${soundOn
                                                 ? 'bg-[#bfff00] text-black ring-[#bfff00]'
-                                                : 'bg-black/45 text-white/90 ring-white/15 hover:bg-black/70 hover:text-[#bfff00]'}`}
+                                                : 'bg-black/45 text-white/90 ring-white/15 hover:bg-black/70 hover:text-[#bfff00]'}
+                      ${needsClickForSound ? 'animate-pulse ring-[#bfff00]/70' : ''}`}
                                     >
                                         {soundOn ? <Volume2 size={15} /> : <VolumeX size={15} />}
                                     </button>

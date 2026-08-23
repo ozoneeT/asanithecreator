@@ -11,18 +11,20 @@ interface VideoPlayerProps {
   poster: string;
   active: boolean;
   muted: boolean;
+  /** Source width / height. Caps the element so it is never stretched. */
+  aspectRatio?: number;
   className?: string;
 }
 
 /**
  * Plain <video> playing an MP4 straight off the R2 CDN.
  *
- * This is the whole point of leaving Vimeo: no third-party iframe, no player
+ * No third-party iframe and no player
  * bundle, and for clips this short no HLS manifest round-trip either. The
  * browser range-requests the file and starts painting almost immediately.
  */
 const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
-  ({ src, poster, active, muted, className }, ref) => {
+  ({ src, poster, active, muted, aspectRatio, className }, ref) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     // Read inside event handlers, which outlive the render that created them.
     const activeRef = useRef(active);
@@ -70,12 +72,25 @@ const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
       video.volume = muted ? 0 : 1;
     }, [muted]);
 
+    const ratio = aspectRatio && aspectRatio > 0 ? aspectRatio : 9 / 16;
+
     return (
       <video
         ref={videoRef}
         src={src}
         poster={poster || undefined}
         className={className}
+        // Cap the box at the source's own aspect ratio. On a wide screen that
+        // makes a centred column `cover` fills exactly (no crop); on a phone the
+        // width limit never binds, so vertical clips stay full-bleed.
+        //
+        // Landscape sources are the exception: cropping one to a phone-shaped
+        // box would leave a narrow slice of the middle, so they letterbox
+        // instead and the blurred backdrop fills the rest.
+        style={{
+          maxWidth: `calc(100dvh * ${ratio})`,
+          objectFit: ratio > 1 ? 'contain' : 'cover',
+        }}
         // muted + playsInline are both required for autoplay on iOS.
         muted
         playsInline

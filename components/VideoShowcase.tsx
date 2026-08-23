@@ -3,7 +3,7 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Play, Pause, VolumeX, Volume2, ArrowUpRight } from 'lucide-react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { PORTFOLIO_ITEMS } from '../constants';
+import { useVideos } from '../hooks/useVideos';
 
 const VIDEO_SRC = '/Production_Studio.MP4';
 const POSTER_SRC = '/production-studio-poster.jpg';
@@ -16,6 +16,8 @@ interface VideoShowcaseProps {
 }
 
 const VideoShowcase: React.FC<VideoShowcaseProps> = ({ isActive = false }) => {
+  // Film count comes from the live R2 library so it can never go stale.
+  const { videos } = useVideos();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const progressRef = useRef<HTMLDivElement | null>(null);
   const isActiveRef = useRef(isActive);
@@ -251,7 +253,7 @@ const VideoShowcase: React.FC<VideoShowcaseProps> = ({ isActive = false }) => {
             {...show(0.42)}
             className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2 text-[9px] uppercase tracking-[0.28em] text-white/35 sm:text-[10px] lg:mt-10"
           >
-            <span className="text-white/70">{PORTFOLIO_ITEMS.length} Films</span>
+            <span className="text-white/70">{videos.length} Films</span>
             <span className="hidden h-3 w-[1px] bg-white/15 sm:block" />
             <span>{DISCIPLINES.join(' · ')}</span>
           </motion.div>

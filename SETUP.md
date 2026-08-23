@@ -107,18 +107,11 @@ rejects HEVC before it uploads.
 
 To avoid it entirely: **Settings → Camera → Formats → Most Compatible**.
 
-### Vimeo fallback
+### Local fallback reel
 
-While the library is being migrated, `/portfolio` falls back to the old hardcoded
-Vimeo list whenever R2 is unconfigured or the manifest is empty. Once everything
-is in R2, delete:
+Vimeo is gone entirely — no `@vimeo/player` dependency, no hardcoded video list.
 
-- `lib/legacyVimeo.ts`
-- `PORTFOLIO_VIDEOS` in `constants.tsx`
-- `public/posters/` (R2 serves posters now)
-- the `@vimeo/player` dependency and the iframe branch in `components/PortfolioPage.tsx`
-
-### Known issue
-
-Vimeo video `1163715939` ("Travel Content Reel") is private or deleted and renders
-an error. It disappears once the library moves to R2.
+Until R2 has content, `/portfolio` plays the sample clips bundled in `public/`
+(see `lib/localVideos.ts`). **R2 always wins:** the moment `manifest.json` lists
+a video, the local reel is replaced completely. Delete `lib/localVideos.ts` and
+its import in `hooks/useVideos.ts` once you no longer want a built-in fallback.

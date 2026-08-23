@@ -1,10 +1,7 @@
-// Shared video shapes.
-//
-// Provider-agnostic on purpose: R2 items carry a direct mp4Url and play in a
-// native <video>; legacy Vimeo items have mp4Url === null and fall back to the
-// Vimeo iframe. That lets both coexist while the library is being migrated.
+// Shared video shapes. Every video is an MP4 on the R2 CDN, played by a
+// native <video> element.
 
-export type VideoSource = 'r2' | 'vimeo';
+export type VideoSource = 'r2';
 
 export interface PortfolioVideo {
   id: string;
@@ -12,8 +9,8 @@ export interface PortfolioVideo {
   title: string;
   description: string;
   tags: string;
-  /** Direct MP4 on the R2 CDN — null for legacy Vimeo items. */
-  mp4Url: string | null;
+  /** Direct MP4 on the R2 CDN. */
+  mp4Url: string;
   posterUrl: string;
   width: number;
   height: number;
